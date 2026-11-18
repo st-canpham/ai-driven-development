@@ -88,7 +88,7 @@ export class ApiService {
     });
   }
 
-  private _handleRespond(request: Promise<unknown>, resolve, reject) {
+  private _handleRespond(request: Promise<AxiosResponse>, resolve, reject) {
     return request
       .then((resp: AxiosResponse) => {
         resolve(resp.data);

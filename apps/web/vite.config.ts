@@ -1,4 +1,4 @@
-import { defineConfig, loadEnv } from 'vite';
+import { type ConfigEnv, defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import svgr from 'vite-plugin-svgr';
 import { createHtmlPlugin } from 'vite-plugin-html';
@@ -11,7 +11,7 @@ const PATHS = {
 };
 
 // https://vitejs.dev/config/
-export default ({ mode }) => {
+export default ({ mode }: Pick<ConfigEnv, 'mode'>) => {
   process.env = { ...process.env, ...loadEnv(mode, process.cwd()) };
   return defineConfig({
     root: PATHS.source,
