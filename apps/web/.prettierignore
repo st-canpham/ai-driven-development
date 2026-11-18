@@ -1,0 +1,9 @@
+build
+dist
+node_modules
+public
+.vscode
+.github
+*.md
+*.yml
+coverage

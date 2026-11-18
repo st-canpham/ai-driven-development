@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "sourceMap": true,
+    "target": "ES2022",
+    "jsx": "react",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "declaration": false,
+    "allowSyntheticDefaultImports": true,
+    "noImplicitAny": false,
+    "noImplicitReturns": false,
+    "removeComments": true,
+    "strictNullChecks": false,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "paths": {
+      "@app/*": ["./src/app/*"],
+      "@core/*": ["./src/app/core/*"],
+      "@shared/*": ["./src/app/shared/*"],
+      "@config/*": ["./src/config/*"],
+      "@stylesheet/*": ["./src/stylesheet/*"],
+      "@assets/*": ["./src/assets/*"]
+    },
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": [
+      "vite-plugin-svgr/client",
+      "node",
+      "vitest/globals",
+      "@testing-library/jest-dom"
+    ]
+  },
+  "include": ["./src/**/*"],
+  "exclude": ["dist", "build", "node_modules"]
+}

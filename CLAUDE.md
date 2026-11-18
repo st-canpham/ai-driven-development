@@ -1,0 +1,25 @@
+# Room Booking — AI-Driven Development lab
+
+Lab project for practising the AI-Driven Development playbook (L1 → L6).
+Domain: book meeting rooms. Users book rooms; admins manage rooms.
+
+## Stack
+- `apps/api` — NestJS 11, TypeORM, MySQL 8.4 (Jest for tests)
+- `apps/web` — React 19 + Vite 6 + TS, team boilerplate (st-fe-rd/b-react-vite-ts); see `apps/web/CLAUDE.md`
+- pnpm workspace; MySQL runs via `docker-compose.yml`
+
+## Commands (run from repo root)
+- `pnpm db:up` — start MySQL (needs Docker)
+- `pnpm dev:api` — API on :3100, all routes under `/api`
+- `pnpm dev:web` — web on :5173, proxies `/api` to the API
+- `pnpm build` / `pnpm lint` / `pnpm test`
+- `pnpm --filter web format` — Prettier + ESLint --fix for the web app
+- `pnpm exec openspec list` / `validate <change>` — OpenSpec CLI (pinned 1.13.0)
+- `pnpm --filter api test:e2e` — e2e tests (needs MySQL up)
+- `pnpm --filter api migration:generate src/database/migrations/<Name>` then `migration:run`
+
+## Boundaries
+- Never edit `.env`; change `.env.example` instead.
+- `synchronize` stays `false`; every schema change is a migration.
+- Do not add dependencies without saying why in the PR.
+- Feature work goes through OpenSpec: `/opsx:propose` -> review proposal/specs/design/tasks -> `/opsx:apply` -> `/opsx:archive`. Living specs in `openspec/specs/`, in-flight changes in `openspec/changes/`.

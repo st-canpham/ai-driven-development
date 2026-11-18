@@ -1,0 +1,17 @@
+{
+  "name": "ai-driven-development",
+  "private": true,
+  "packageManager": "pnpm@10.24.0",
+  "scripts": {
+    "db:up": "docker compose up -d mysql",
+    "db:down": "docker compose down",
+    "dev:api": "pnpm --filter api start:dev",
+    "dev:web": "pnpm --filter web dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r --if-present test"
+  },
+  "devDependencies": {
+    "@fission-ai/openspec": "1.13.0"
+  }
+}
