@@ -1,0 +1,29 @@
+{
+  // L2 sandbox: the agent, builds, tests, dev servers and MySQL run here.
+  // IDE, browser and personal credentials stay on the host.
+  "name": "room-booking",
+  "dockerComposeFile": ["../docker-compose.yml", "docker-compose.devcontainer.yml"],
+  "service": "workspace",
+  "runServices": ["workspace", "mysql"],
+  // The repo ROOT is mounted (not a worktree folder) so git worktrees keep working (L4).
+  "workspaceFolder": "/workspaces/ai-driven-development",
+  "features": {
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
+  },
+  "containerEnv": {
+    "DB_HOST": "mysql",
+    "MCP_MYSQL_HOST": "mysql"
+  },
+  "forwardPorts": [3100, 5173],
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "vitest.explorer",
+        "anthropic.claude-code"
+      ]
+    }
+  }
+}
