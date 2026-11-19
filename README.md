@@ -4,7 +4,7 @@ NestJS + React + MySQL project used to practise the AI-Driven Development playbo
 
 ## First-time setup
 
-Copy the env templates, then fill in the DB passwords (any values you like for local use):
+Copy the env templates, then fill in the DB name and passwords (any values you like for local use):
 
 ```bash
 cp .env.example .env
@@ -14,11 +14,11 @@ cp apps/web/.env.example apps/web/.env
 
 | File | Fill in | Used by |
 |---|---|---|
-| `.env` | `DB_PASSWORD`, `DB_ROOT_PASSWORD`, `DB_RO_PASSWORD` | docker-compose and `scripts/mcp-mysql.sh` |
-| `apps/api/.env` | `DB_PASSWORD` (same value as in `.env`) | NestJS API and TypeORM migrations |
+| `.env` | `DB_NAME`, `DB_PASSWORD`, `DB_ROOT_PASSWORD`, `DB_RO_PASSWORD` | docker-compose and `scripts/mcp-mysql.sh` |
+| `apps/api/.env` | `DB_NAME`, `DB_PASSWORD` (same values as in `.env`) | NestJS API and TypeORM migrations |
 | `apps/web/.env` | nothing | Vite |
 
-All three are gitignored; never put a real password in a committed file.
+All three are gitignored; never put the DB name or a password in a committed file.
 
 ```bash
 pnpm install

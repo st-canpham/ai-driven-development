@@ -2,7 +2,7 @@
 # Read-only user for the MySQL MCP server (L2: least privilege).
 # Runs only when the mysql-data volume is created for the first time.
 # The password comes from DB_RO_PASSWORD in the gitignored root .env.
-# Covers `booking` and per-worktree schemas such as `booking_feat_x` (L4).
+# Covers DB_NAME and per-worktree schemas prefixed with it (L4).
 set -euo pipefail
 
 mysql -uroot -p"${MYSQL_ROOT_PASSWORD}" <<SQL

@@ -3,7 +3,7 @@ services:
     image: mysql:8.4
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD in .env}
-      MYSQL_DATABASE: ${DB_NAME:-booking}
+      MYSQL_DATABASE: ${DB_NAME:?set DB_NAME in .env}
       MYSQL_USER: ${DB_USER:-booking}
       MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
       # Used by docker/mysql/init/01-readonly-user.sh
