@@ -10,11 +10,8 @@
   "features": {
     "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
   },
-  "containerEnv": {
-    "DB_HOST": "mysql",
-    "MCP_MYSQL_HOST": "mysql"
-  },
-  "forwardPorts": [3100, 5173],
+  // Env vars and published ports live in docker-compose.devcontainer.yml so they also
+  // apply to `docker exec` sessions (pnpm dc:shell / dc:claude) and the devcontainer CLI.
   "postCreateCommand": "bash .devcontainer/post-create.sh",
   "customizations": {
     "vscode": {

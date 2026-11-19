@@ -49,6 +49,8 @@ export default ({ mode }: Pick<ConfigEnv, 'mode'>) => {
       },
     },
     server: {
+      // 0.0.0.0 inside the Dev Container (set in its compose file); localhost elsewhere.
+      host: process.env.VITE_HOST || 'localhost',
       port: 5173,
       proxy: { '/api': 'http://localhost:3100' },
     },
