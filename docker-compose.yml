@@ -1,4 +1,3 @@
-# Passwords come from the gitignored root .env (copy .env.example).
 services:
   mysql:
     image: mysql:8.4
