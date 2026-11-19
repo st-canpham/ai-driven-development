@@ -6,7 +6,7 @@ export const typeOrmOptions = (): DataSourceOptions => ({
   port: Number(process.env.DB_PORT ?? 3306),
   database: process.env.DB_NAME ?? 'booking',
   username: process.env.DB_USER ?? 'booking',
-  password: process.env.DB_PASSWORD ?? 'booking',
+  password: process.env.DB_PASSWORD,
   entities: [__dirname + '/../**/*.entity.{ts,js}'],
   migrations: [__dirname + '/migrations/*.{ts,js}'],
   synchronize: false,
