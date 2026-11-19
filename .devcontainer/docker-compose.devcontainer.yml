@@ -1,0 +1,27 @@
+services:
+  workspace:
+    image: mcr.microsoft.com/devcontainers/typescript-node:24-bookworm
+    command: sleep infinity
+    environment:
+      DB_HOST: mysql
+      MCP_MYSQL_HOST: mysql
+      # Vite listens on all addresses so the published port reaches it.
+      VITE_HOST: 0.0.0.0
+    # Published for every way of starting the container (VS Code or devcontainer CLI).
+    ports:
+      - "3100:3100"
+      - "5173:5173"
+    volumes:
+      # Repo root only (paths resolve from the repo root, the first compose file). No ~/.ssh, ~/.aws, ~/.config or other host credentials.
+      - .:/workspaces/ai-driven-development:cached
+      # Container-only node_modules so host (macOS) binaries never leak in.
+      - node-modules:/workspaces/ai-driven-development/node_modules
+      - api-node-modules:/workspaces/ai-driven-development/apps/api/node_modules
+      - web-node-modules:/workspaces/ai-driven-development/apps/web/node_modules
+    depends_on:
+      mysql:
+        condition: service_healthy
+volumes:
+  node-modules:
+  api-node-modules:
+  web-node-modules:

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "mysql": {
+      "command": "./scripts/mcp-mysql.sh",
+      "args": []
+    },
+    "context7": {
+      "command": "pnpm",
+      "args": ["dlx", "@upstash/context7-mcp@4.4.4"]
+    }
+  }
+}
