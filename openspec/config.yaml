@@ -1,4 +1,4 @@
-schema: spec-driven
+schema: room-booking
 
 # Shown to the AI when it creates proposal / specs / design / tasks.
 context: |
@@ -11,24 +11,28 @@ context: |
 
 rules:
   proposal:
-    - Fit on one screen; include "Out of scope" and "Unchanged behavior" sections.
-    - One change = one reviewable PR.
+    - "Fit on one screen; include 'Out of scope' and 'Unchanged behavior' sections."
+    - "One change = one reviewable PR."
   specs:
-    - Write each requirement in EARS form (WHEN/WHILE/IF ... THE SYSTEM SHALL ...).
-    - Give every requirement an ID with a domain prefix, e.g. ROOM-01, BK-03.
-    - Every requirement has at least one measurable scenario; no words like "fast" or "friendly".
-    - Max ~7 requirements per change; split the change if it grows past that.
+    - "Write each requirement in EARS form (WHEN/WHILE/IF ... THE SYSTEM SHALL ...)."
+    - "Give every requirement an ID with a domain prefix, e.g. ROOM-01, BK-03."
+    - "Every requirement has at least one measurable scenario; no words like 'fast' or 'friendly'."
+    - "Max ~7 requirements per change; split the change if it grows past that."
   design:
-    - List the files to change, the API contract (method, path, body, status codes) and DB/migration impact.
-    - State how the result is verified.
+    - "Sequence diagram participants use real names, e.g. Web (RoomList container) -> RoomsController -> RoomsService -> MySQL."
+    - "Web flows follow apps/web/CLAUDE.md: container -> hook -> shared service -> ApiService."
   tasks:
-    - Order tasks test-first; each test task names the requirement IDs it covers.
-    - Each task is small enough for one commit.
+    - "Order tasks test-first; each test task names the requirement IDs it covers."
+    - "Each task is small enough for one commit."
 
+# Every list item is quoted: an unquoted item containing ': ' parses as a map,
+# and OpenSpec then silently ignores the whole list.
 operations:
   apply:
     guidance:
-      - Write the failing test first and confirm it fails for the right reason before implementing.
-      - Test names start with the requirement ID, e.g. "BK-03: rejects overlapping booking".
-      - Do not edit tests in the same commit as implementation.
-      - Run pnpm lint and pnpm test before marking a task done.
+      - "Before any code: run `gh pr view --json labels -q '.labels[].name'` on this branch's PR. Continue only if it has plan-approved and not plan-review; otherwise stop and say the plan is not approved."
+      - "If the plan turns out wrong while implementing, stop, propose /opsx:update, and do not continue until the plan is approved again."
+      - "Write the failing test first and confirm it fails for the right reason before implementing."
+      - "Test names start with the requirement ID, e.g. 'BK-03: rejects overlapping booking'."
+      - "Do not edit tests in the same commit as implementation."
+      - "Run pnpm lint and pnpm test before marking a task done."

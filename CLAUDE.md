@@ -24,7 +24,19 @@ Domain: book meeting rooms. Users book rooms; admins manage rooms.
 - Never edit `.env`; change `.env.example` instead.
 - `synchronize` stays `false`; every schema change is a migration.
 - Do not add dependencies without saying why in the PR.
-- Feature work goes through OpenSpec: `/opsx:propose` -> review proposal/specs/design/tasks -> `/opsx:apply` -> `/opsx:archive`. Living specs in `openspec/specs/`, in-flight changes in `openspec/changes/`.
+- Feature work goes through OpenSpec (see Plan-first). Living specs in `openspec/specs/`, in-flight changes in `openspec/changes/`, project schema in `openspec/schemas/room-booking/`.
+
+## Plan-first (L3)
+- **Tier 0 — no plan:** the diff fits in one sentence, touches one file and changes no interface (typo, constant, copy). Say "Tier 0: <reason>" in the PR.
+- **Everything else needs an approved OpenSpec change before any code:**
+  1. `/opsx:explore` (read-only discussion), then `/opsx:propose` — writes only `openspec/changes/<id>/`. `design.md` is the plan: files, interfaces, Mermaid diagrams, how to verify.
+  2. Commit it alone as `plan: <id>`, push, open a **draft** PR and add the label `plan-review`.
+  3. Wait. A person reviews and swaps `plan-review` for `plan-approved`. Never add `plan-approved` yourself.
+  4. `/opsx:apply` only when the PR has `plan-approved` and not `plan-review`.
+  5. If the plan turns out wrong: stop, `/opsx:update`, swap `plan-approved` back to `plan-review`, wait again. Code never runs ahead of the plan.
+  6. When done: PR ready for review with "Deviations from plan" filled in; after merge, `/opsx:archive`.
+- `bash scripts/check-plan.sh [base]` checks a branch: 2+ changed code files need a change under `openspec/changes/`.
+- Log each PR in `.claude/METRICS.md` (plan attached? second design round?).
 
 ## Environment (L2)
 - Preferred: open the repo in the Dev Container (`.devcontainer/`). The agent, builds, tests and MySQL run inside; host credentials are never mounted. The container publishes :3306, :3100 and :5173 on the host, so stop host-side `pnpm db:up` and dev servers first.
