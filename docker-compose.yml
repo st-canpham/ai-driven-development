@@ -4,10 +4,10 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD in .env}
       MYSQL_DATABASE: ${DB_NAME:?set DB_NAME in .env}
-      MYSQL_USER: ${DB_USER:-booking}
+      MYSQL_USER: ${DB_USER:?set DB_USER in .env}
       MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
       # Used by docker/mysql/init/01-readonly-user.sh
-      DB_RO_USER: ${DB_RO_USER:-booking_ro}
+      DB_RO_USER: ${DB_RO_USER:?set DB_RO_USER in .env}
       DB_RO_PASSWORD: ${DB_RO_PASSWORD:?set DB_RO_PASSWORD in .env}
     ports:
       - "${DB_PORT:-3306}:3306"
