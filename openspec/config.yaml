@@ -56,3 +56,8 @@ operations:
       - "Test names start with the requirement ID, e.g. 'BK-03: rejects overlapping booking'."
       - "Do not edit tests in the same commit as implementation."
       - "Run pnpm lint and pnpm test before marking a task done."
+  archive:
+    guidance:
+      - "Archive in the same PR as the code, after a person approved the code and before merge; never archive on main after the merge."
+      - "Commit only the archive result as 'archive: <change-id>' (updated openspec/specs/ and the moved change folder), then push."
+      - "Run pnpm exec openspec validate --specs and bash scripts/check-plan.sh before pushing the archive commit."

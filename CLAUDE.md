@@ -27,15 +27,20 @@ Domain: book meeting rooms. Users book rooms; admins manage rooms.
 - Feature work goes through OpenSpec (see Plan-first). Living specs in `openspec/specs/`, in-flight changes in `openspec/changes/`, project schema in `openspec/schemas/room-booking/`.
 
 ## Plan-first (L3)
-- **Tier 0 — no plan:** the diff fits in one sentence, touches one file and changes no interface (typo, constant, copy). Say "Tier 0: <reason>" in the PR.
+- **Tier 0 — no plan:** the diff fits in one sentence and changes no behavior and no interface (typo, rename, copy, internal refactor). File count does not decide it: a one-file change to a status code or a rule needs a plan.
+  - Never Tier 0: controllers, DTOs, entities, migrations, web `*.routes.ts`, `src/config/endpoint.ts`.
+  - Open the PR with "Tier 0: <reason>"; a **person** adds the label `tier-0` after checking the claim. Never add it yourself.
 - **Everything else needs an approved OpenSpec change before any code:**
   1. `/opsx:explore` (read-only discussion), then `/opsx:propose` — writes only `openspec/changes/<id>/`. `design.md` is the plan: files, interfaces, Mermaid diagrams, how to verify.
   2. Commit it alone as `plan: <id>`, push, open a **draft** PR and add the label `plan-review`.
   3. Wait. A person reviews and swaps `plan-review` for `plan-approved`. Never add `plan-approved` yourself.
   4. `/opsx:apply` only when the PR has `plan-approved` and not `plan-review`.
   5. If the plan turns out wrong: stop, `/opsx:update`, swap `plan-approved` back to `plan-review`, wait again. Code never runs ahead of the plan.
-  6. When done: PR ready for review with "Deviations from plan" filled in; after merge, `/opsx:archive`.
-- `bash scripts/check-plan.sh [base]` checks a branch: 2+ changed code files need a change under `openspec/changes/`.
+  6. When done: mark the PR ready for review with "Deviations from plan" filled in.
+  7. After a person approves the code, `/opsx:archive` **in the same PR** as its last commit (`archive: <id>`), then merge. Specs and code reach `main` together; never archive on `main` after the merge.
+- If a change meant as Tier 0 turns out to alter behavior or an interface, stop and switch to the OpenSpec flow.
+- Labels: `plan-review`, `plan-approved`, `tier-0`. Only a person adds `plan-approved` or `tier-0`.
+- `bash scripts/check-plan.sh [base]` checks a branch: any changed code under `apps/` (tests and docs excluded) needs an OpenSpec change with `plan-approved`, or `tier-0`; interface files always need the OpenSpec change.
 - Log each PR in `.claude/METRICS.md` (plan attached? second design round?).
 
 ### Naming (kebab-case everywhere)
@@ -45,6 +50,7 @@ Domain: book meeting rooms. Users book rooms; admins manage rooms.
 | Capability (`openspec/specs/<name>/`) | noun for user-visible behavior, not a code name; flat; reuse the exact existing name (`openspec list --specs`) | `room-management`, `room-booking`, `user-auth` |
 | Branch | `<type>/<change id minus verb>`; `add`/`update` → `feat`, `fix` → `fix`, `remove`/`refactor` → `refactor` | `feat/room-management`, `fix/booking-timezone` |
 | Plan commit | `plan: <change id>` | `plan: add-room-management` |
+| Archive commit | `archive: <change id>`, last commit of the same PR | `archive: add-room-management` |
 | Archived change | added by `/opsx:archive`: `YYYY-MM-DD-<change id>` | `2026-11-25-add-room-management` |
 
 ## Environment (L2)
