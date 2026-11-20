@@ -51,8 +51,12 @@ export default ({ mode }: Pick<ConfigEnv, 'mode'>) => {
     server: {
       // 0.0.0.0 inside the Dev Container (set in its compose file); localhost elsewhere.
       host: process.env.VITE_HOST || 'localhost',
-      port: 5173,
-      proxy: { '/api': 'http://localhost:3100' },
+      // Per-worktree ports come from apps/web/.env (scripts/new-task.sh).
+      port: Number(process.env.VITE_WEB_PORT || 5173),
+      strictPort: true,
+      proxy: {
+        '/api': `http://localhost:${process.env.VITE_API_PORT || 3100}`,
+      },
     },
     build: {
       // Specify the dist folder

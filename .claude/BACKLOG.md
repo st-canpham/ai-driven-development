@@ -2,11 +2,6 @@
 
 Work agreed in earlier levels but deferred to a later one. Move an item to its PR when the level starts; delete it when merged.
 
-## L4 · Isolation
-
-- `scripts/new-task.sh <change-id>`: git worktree + branch (naming from CLAUDE.md), copy `.env` files, own API/web ports, own MySQL schema `<DB_NAME>_<branch>`, run migrations.
-- `scripts/clean-task.sh`: remove the worktree, branch and schema after merge.
-
 ## L5 · Enforcement
 
 ### Plan gate (CI) — agreed in L3

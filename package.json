@@ -7,6 +7,8 @@
     "db:down": "docker compose down",
     "dc:shell": "docker exec -it -u node -w /workspaces/ai-driven-development ai-driven-development-workspace-1 bash",
     "dc:claude": "docker exec -it -u node -w /workspaces/ai-driven-development ai-driven-development-workspace-1 claude",
+    "task:new": "bash scripts/new-task.sh",
+    "task:clean": "bash scripts/clean-task.sh",
     "dev:api": "pnpm --filter api start:dev",
     "dev:web": "pnpm --filter web dev",
     "build": "pnpm -r build",
