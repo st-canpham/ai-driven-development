@@ -30,7 +30,7 @@ Domain: book meeting rooms. Users book rooms; admins manage rooms.
 ## Plan-first (L3)
 - **Tier 0 — no plan:** the diff fits in one sentence and changes no behavior and no interface (typo, rename, copy, internal refactor). File count does not decide it: a one-file change to a status code or a rule needs a plan.
   - Never Tier 0: controllers, DTOs, entities, migrations, web `*.routes.ts`, `src/config/endpoint.ts`.
-  - Open the PR with "Tier 0: <reason>"; a **person** adds the label `plan:tier-0` after checking the claim. Never add it yourself.
+  - When the change cannot affect any spec (config, tooling, docs, internal refactor), you may add `plan:tier-0` yourself and must write "Tier 0: <reason>" in the PR body and in a PR comment. The reviewer removes the label if they disagree, and then the OpenSpec flow applies.
   - `status:` labels apply as below (`code-review` → `done`); there is nothing to archive.
 - **Everything else needs an approved OpenSpec change before any code:**
   1. `/opsx:explore` (read-only discussion), then `/opsx:propose` — writes only `openspec/changes/<id>/`. `design.md` is the plan: files, interfaces, Mermaid diagrams, how to verify.
@@ -50,7 +50,7 @@ Two independent groups on every PR: the **plan gate** (`plan:approved` stays unt
 |---|---|---|
 | `plan:review` | plan waiting for review, no code yet | agent |
 | `plan:approved` | plan approved, `/opsx:apply` may start | **person** |
-| `plan:tier-0` | no plan needed: no behavior or interface change | **person** |
+| `plan:tier-0` | no plan needed: no behavior or interface change | agent, with the reason in the PR |
 | `status:in-progress` | implementing (also while fixing review comments) | agent |
 | `status:code-review` | implementation done, waiting for code review | agent |
 | `status:changes-requested` | code review asked for changes | **person** |

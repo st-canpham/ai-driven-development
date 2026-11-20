@@ -5,7 +5,8 @@
 # Every changed code file under apps/ (tests and docs excluded) needs either:
 #   - an OpenSpec change under openspec/changes/ and the PR label plan:approved
 #     (and not plan:review), or
-#   - the PR label plan:tier-0, set by a person: no behavior or interface change.
+#   - the PR label plan:tier-0 (no behavior or interface change; the author adds it
+#     with a reason in the PR, the reviewer removes it if they disagree).
 # Interface files (controllers, DTOs, entities, migrations, web routes and
 # endpoints) can never be plan:tier-0.
 #
@@ -61,9 +62,9 @@ if [ -n "$interface_files" ]; then
   exit 1
 fi
 if has plan:tier-0; then
-  echo "OK: plan:tier-0 (a person confirmed no behavior or interface change)."
+  echo "OK: plan:tier-0 (no behavior or interface change; reason in the PR)."
   exit 0
 fi
 echo "FAIL: code changed without an OpenSpec change or the plan:tier-0 label."
-[ -n "${no_pr:-}" ] && echo "      No PR for this branch yet: open one, then a person adds plan:tier-0 or you run /opsx:propose."
+[ -n "${no_pr:-}" ] && echo "      No PR for this branch yet: open one and add plan:tier-0 with a reason, or run /opsx:propose."
 exit 1
