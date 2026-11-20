@@ -52,12 +52,14 @@ operations:
     guidance:
       - "Before any code: run `gh pr view --json labels -q '.labels[].name'` on this branch's PR. Continue only if it has plan-approved and not plan-review; otherwise stop and say the plan is not approved."
       - "If the plan turns out wrong while implementing, stop, propose /opsx:update, and do not continue until the plan is approved again."
+      - "When you start, set the PR status label to status:in-progress (remove any other status: label). When every task is done, mark the PR ready for review and swap status:in-progress for status:code-review."
+      - "If the PR has status:changes-requested, swap it for status:in-progress, address the review comments, then set status:code-review again."
       - "Write the failing test first and confirm it fails for the right reason before implementing."
       - "Test names start with the requirement ID, e.g. 'BK-03: rejects overlapping booking'."
       - "Do not edit tests in the same commit as implementation."
       - "Run pnpm lint and pnpm test before marking a task done."
   archive:
     guidance:
-      - "Archive in the same PR as the code, after a person approved the code and before merge; never archive on main after the merge."
+      - "Archive only when the PR has status:done (a person approved the code), in the same PR and before merge; never archive on main after the merge. Otherwise stop and say the code is not approved yet."
       - "Commit only the archive result as 'archive: <change-id>' (updated openspec/specs/ and the moved change folder), then push."
       - "Run pnpm exec openspec validate --specs and bash scripts/check-plan.sh before pushing the archive commit."

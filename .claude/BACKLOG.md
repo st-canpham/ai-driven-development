@@ -23,6 +23,12 @@ Work agreed in earlier levels but deferred to a later one. Move an item to its P
 
 - CI reads the PR timeline and accepts `plan-approved` and `tier-0` only when a person (not the agent's token or a bot) added them.
 - Count PRs that went from `plan-approved` back to `plan-review` and write the L3 "second design round" metric automatically instead of by hand in `.claude/METRICS.md`.
+- The same person-only check for `status:changes-requested`, `status:done` and `status:cancelled`.
+
+### Status labels — agreed in L3
+
+- Fail the plan gate when a PR has zero or more than one `status:` label, and block merge unless it is `status:done`.
+- Automate the moves the agent does by hand today: `status:in-progress` when the first code commit lands, `status:code-review` when the PR leaves draft, `status:cancelled` when a PR is closed unmerged.
 
 ### Other layers from the playbook
 
