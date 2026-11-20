@@ -33,11 +33,16 @@ rules:
     - "Give every requirement an ID with a domain prefix, e.g. ROOM-01, BK-03."
     - "Every requirement has at least one measurable scenario; no words like 'fast' or 'friendly'."
     - "Max ~7 requirements per change; split the change if it grows past that."
+    - "The requirement body (the line after the header) MUST contain SHALL; a SHALL only in the header fails validation."
+    - "Scenarios use GIVEN / WHEN / THEN / AND: GIVEN for existing state (omit only when nothing must exist), exactly one WHEN, at least one THEN, AND for extra preconditions or outcomes."
+    - "Add a THEN/AND for what must NOT happen when it matters, e.g. 'AND no booking is stored'."
+    - "MODIFIED requirements repeat the whole requirement with every existing scenario; validate and archive reject a delta that drops one."
   design:
     - "Sequence diagram participants use real names, e.g. Web (RoomList container) -> RoomsController -> RoomsService -> MySQL."
     - "Web flows follow apps/web/CLAUDE.md: container -> hook -> shared service -> ApiService."
   tasks:
     - "Order tasks test-first; each test task names the requirement IDs it covers."
+    - "One test per scenario: GIVEN/AND = arrange, WHEN = act, THEN/AND = assert."
     - "Each task is small enough for one commit."
 
 # Every list item is quoted: an unquoted item containing ': ' parses as a map,
