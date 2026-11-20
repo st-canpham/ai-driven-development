@@ -2,11 +2,6 @@
 
 Work agreed in earlier levels but deferred to a later one. Move an item to its PR when the level starts; delete it when merged.
 
-## L4 · Isolation
-
-- `scripts/new-task.sh <change-id>`: git worktree + branch (naming from CLAUDE.md), copy `.env` files, own API/web ports, own MySQL schema `<DB_NAME>_<branch>`, run migrations.
-- `scripts/clean-task.sh`: remove the worktree, branch and schema after merge.
-
 ## L5 · Enforcement
 
 ### Plan gate (CI) — agreed in L3
@@ -21,7 +16,8 @@ Work agreed in earlier levels but deferred to a later one. Move an item to its P
 
 ### Label integrity — agreed in L3
 
-- CI reads the PR timeline and accepts `plan:approved` and `plan:tier-0` only when a person (not the agent's token or a bot) added them.
+- CI reads the PR timeline and accepts `plan:approved` only when a person (not the agent's token or a bot) added it.
+- `plan:tier-0` may come from the agent: CI checks that the PR body has a "Tier 0: <reason>" line, and keeps failing on interface files.
 - Count PRs that went from `plan:approved` back to `plan:review` and write the L3 "second design round" metric automatically instead of by hand in `.claude/METRICS.md`.
 - The same person-only check for `status:changes-requested`, `status:done` and `status:cancelled`.
 

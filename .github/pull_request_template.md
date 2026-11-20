@@ -10,7 +10,7 @@
 > Link the approved OpenSpec change, or say why this is Tier 0.
 
 - OpenSpec change: `openspec/changes/<id>/` (plan commit: `plan: <id>`)
-- [ ] Tier 0: <reason — one-sentence diff, no behavior or interface change>. A person adds the `plan:tier-0` label after checking; controllers, DTOs, entities, migrations, web routes and endpoints can never be Tier 0.
+- [ ] Tier 0: <reason — one-sentence diff, no behavior or interface change>. The author (agent or person) adds the `plan:tier-0` label with this reason; the reviewer removes it if they disagree; controllers, DTOs, entities, migrations, web routes and endpoints can never be Tier 0.
 
 #### Deviations from plan
 

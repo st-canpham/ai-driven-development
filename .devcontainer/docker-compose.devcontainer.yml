@@ -2,15 +2,21 @@ services:
   workspace:
     image: mcr.microsoft.com/devcontainers/typescript-node:24-bookworm
     command: sleep infinity
+    # Tiny init as PID 1 so exited dev servers (pnpm, vite, nest) are reaped.
+    init: true
     environment:
       DB_HOST: mysql
       MCP_MYSQL_HOST: mysql
       # Vite listens on all addresses so the published port reaches it.
       VITE_HOST: 0.0.0.0
+      # scripts/new-task.sh and clean-task.sh only run where this is set (L4).
+      IN_DEVCONTAINER: "true"
     # Published for every way of starting the container (VS Code or devcontainer CLI).
+    # Main checkout: 3100 / 5173. Worktree slots 1-9 (scripts/new-task.sh):
+    # API 3100+slot, web 5173+slot.
     ports:
-      - "3100:3100"
-      - "5173:5173"
+      - "3100-3109:3100-3109"
+      - "5173-5182:5173-5182"
     volumes:
       # Repo root only (paths resolve from the repo root, the first compose file). No ~/.ssh, ~/.aws, ~/.config or other host credentials.
       - .:/workspaces/ai-driven-development:cached
