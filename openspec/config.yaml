@@ -9,10 +9,25 @@ context: |
   This repo is a lab for the AI-Driven Development playbook (L1 -> L6):
   L3 plan-first, L6 spec-driven + TDD.
 
+  Naming (kebab-case everywhere):
+  - Change id = verb + what changes, 2-5 words: add-room-management,
+    add-booking-overlap-check, fix-booking-timezone, update-room-capacity-rules,
+    remove-legacy-room-fields, refactor-room-service.
+    Verbs: add, update, remove, fix, refactor.
+  - Capability (openspec/specs/<capability>/) = noun for user-visible behavior,
+    not code names: room-management, room-booking, user-auth, usage-reports.
+    Flat layout; reuse the exact existing name (check `openspec list --specs`).
+  - Branch = <type>/<change-id minus its verb>; type from the verb:
+    add|update -> feat, fix -> fix, remove|refactor -> refactor.
+    add-room-management -> feat/room-management,
+    fix-booking-timezone -> fix/booking-timezone.
+    Plan commit = "plan: <change-id>".
+
 rules:
   proposal:
     - "Fit on one screen; include 'Out of scope' and 'Unchanged behavior' sections."
     - "One change = one reviewable PR."
+    - "Capabilities: reuse the exact existing name from openspec list --specs; a new one is a kebab-case noun for user-visible behavior (room-booking, not bookings-controller)."
   specs:
     - "Write each requirement in EARS form (WHEN/WHILE/IF ... THE SYSTEM SHALL ...)."
     - "Give every requirement an ID with a domain prefix, e.g. ROOM-01, BK-03."

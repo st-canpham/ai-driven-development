@@ -38,6 +38,15 @@ Domain: book meeting rooms. Users book rooms; admins manage rooms.
 - `bash scripts/check-plan.sh [base]` checks a branch: 2+ changed code files need a change under `openspec/changes/`.
 - Log each PR in `.claude/METRICS.md` (plan attached? second design round?).
 
+### Naming (kebab-case everywhere)
+| What | Rule | Example |
+|---|---|---|
+| Change id (`openspec/changes/<id>/`) | verb + what changes, 2–5 words; verbs `add`, `update`, `remove`, `fix`, `refactor` | `add-room-management`, `fix-booking-timezone` |
+| Capability (`openspec/specs/<name>/`) | noun for user-visible behavior, not a code name; flat; reuse the exact existing name (`openspec list --specs`) | `room-management`, `room-booking`, `user-auth` |
+| Branch | `<type>/<change id minus verb>`; `add`/`update` → `feat`, `fix` → `fix`, `remove`/`refactor` → `refactor` | `feat/room-management`, `fix/booking-timezone` |
+| Plan commit | `plan: <change id>` | `plan: add-room-management` |
+| Archived change | added by `/opsx:archive`: `YYYY-MM-DD-<change id>` | `2026-11-25-add-room-management` |
+
 ## Environment (L2)
 - Preferred: open the repo in the Dev Container (`.devcontainer/`). The agent, builds, tests and MySQL run inside; host credentials are never mounted. The container publishes :3306, :3100 and :5173 on the host, so stop host-side `pnpm db:up` and dev servers first.
 - Secrets: the DB name, users and passwords live only in gitignored `.env` files; `*.env.example` keeps keys with empty values. Never write them into a committed file.
