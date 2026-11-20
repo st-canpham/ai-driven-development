@@ -41,7 +41,7 @@ Domain: book meeting rooms. Users book rooms; admins manage rooms.
 - If a change meant as Tier 0 turns out to alter behavior or an interface, stop and switch to the OpenSpec flow.
 - Labels: `plan-review`, `plan-approved`, `tier-0`. Only a person adds `plan-approved` or `tier-0`.
 - `bash scripts/check-plan.sh [base]` checks a branch: any changed code under `apps/` (tests and docs excluded) needs an OpenSpec change with `plan-approved`, or `tier-0`; interface files always need the OpenSpec change.
-- Log each PR in `.claude/METRICS.md` (plan attached? second design round?).
+- Log each PR in `.claude/METRICS.md` (plan attached? second design round?). Work deferred to later levels lives in `.claude/BACKLOG.md`.
 
 ### Naming (kebab-case everywhere)
 | What | Rule | Example |
