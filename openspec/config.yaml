@@ -1,4 +1,4 @@
-schema: spec-driven
+schema: room-booking
 
 # Shown to the AI when it creates proposal / specs / design / tasks.
 context: |
@@ -9,26 +9,57 @@ context: |
   This repo is a lab for the AI-Driven Development playbook (L1 -> L6):
   L3 plan-first, L6 spec-driven + TDD.
 
+  Naming (kebab-case everywhere):
+  - Change id = verb + what changes, 2-5 words: add-room-management,
+    add-booking-overlap-check, fix-booking-timezone, update-room-capacity-rules,
+    remove-legacy-room-fields, refactor-room-service.
+    Verbs: add, update, remove, fix, refactor.
+  - Capability (openspec/specs/<capability>/) = noun for user-visible behavior,
+    not code names: room-management, room-booking, user-auth, usage-reports.
+    Flat layout; reuse the exact existing name (check `openspec list --specs`).
+  - Branch = <type>/<change-id minus its verb>; type from the verb:
+    add|update -> feat, fix -> fix, remove|refactor -> refactor.
+    add-room-management -> feat/room-management,
+    fix-booking-timezone -> fix/booking-timezone.
+    Plan commit = "plan: <change-id>".
+
 rules:
   proposal:
-    - Fit on one screen; include "Out of scope" and "Unchanged behavior" sections.
-    - One change = one reviewable PR.
+    - "Fit on one screen; include 'Out of scope' and 'Unchanged behavior' sections."
+    - "One change = one reviewable PR."
+    - "Capabilities: reuse the exact existing name from openspec list --specs; a new one is a kebab-case noun for user-visible behavior (room-booking, not bookings-controller)."
   specs:
-    - Write each requirement in EARS form (WHEN/WHILE/IF ... THE SYSTEM SHALL ...).
-    - Give every requirement an ID with a domain prefix, e.g. ROOM-01, BK-03.
-    - Every requirement has at least one measurable scenario; no words like "fast" or "friendly".
-    - Max ~7 requirements per change; split the change if it grows past that.
+    - "Write each requirement in EARS form (WHEN/WHILE/IF ... THE SYSTEM SHALL ...)."
+    - "Give every requirement an ID with a domain prefix, e.g. ROOM-01, BK-03."
+    - "Every requirement has at least one measurable scenario; no words like 'fast' or 'friendly'."
+    - "Max ~7 requirements per change; split the change if it grows past that."
+    - "The requirement body (the line after the header) MUST contain SHALL; a SHALL only in the header fails validation."
+    - "Scenarios use GIVEN / WHEN / THEN / AND: GIVEN for existing state (omit only when nothing must exist), exactly one WHEN, at least one THEN, AND for extra preconditions or outcomes."
+    - "Add a THEN/AND for what must NOT happen when it matters, e.g. 'AND no booking is stored'."
+    - "MODIFIED requirements repeat the whole requirement with every existing scenario; validate and archive reject a delta that drops one."
   design:
-    - List the files to change, the API contract (method, path, body, status codes) and DB/migration impact.
-    - State how the result is verified.
+    - "Sequence diagram participants use real names, e.g. Web (RoomList container) -> RoomsController -> RoomsService -> MySQL."
+    - "Web flows follow apps/web/CLAUDE.md: container -> hook -> shared service -> ApiService."
   tasks:
-    - Order tasks test-first; each test task names the requirement IDs it covers.
-    - Each task is small enough for one commit.
+    - "Order tasks test-first; each test task names the requirement IDs it covers."
+    - "One test per scenario: GIVEN/AND = arrange, WHEN = act, THEN/AND = assert."
+    - "Each task is small enough for one commit."
 
+# Every list item is quoted: an unquoted item containing ': ' parses as a map,
+# and OpenSpec then silently ignores the whole list.
 operations:
   apply:
     guidance:
-      - Write the failing test first and confirm it fails for the right reason before implementing.
-      - Test names start with the requirement ID, e.g. "BK-03: rejects overlapping booking".
-      - Do not edit tests in the same commit as implementation.
-      - Run pnpm lint and pnpm test before marking a task done.
+      - "Before any code: run `gh pr view --json labels -q '.labels[].name'` on this branch's PR. Continue only if it has plan:approved and not plan:review; otherwise stop and say the plan is not approved."
+      - "If the plan turns out wrong while implementing, stop, propose /opsx:update, and do not continue until the plan is approved again."
+      - "When you start, set the PR status label to status:in-progress (remove any other status: label). When every task is done, mark the PR ready for review and swap status:in-progress for status:code-review."
+      - "If the PR has status:changes-requested, swap it for status:in-progress, address the review comments, then set status:code-review again."
+      - "Write the failing test first and confirm it fails for the right reason before implementing."
+      - "Test names start with the requirement ID, e.g. 'BK-03: rejects overlapping booking'."
+      - "Do not edit tests in the same commit as implementation."
+      - "Run pnpm lint and pnpm test before marking a task done."
+  archive:
+    guidance:
+      - "Archive only when the PR has status:done (a person approved the code), in the same PR and before merge; never archive on main after the merge. Otherwise stop and say the code is not approved yet."
+      - "Commit only the archive result as 'archive: <change-id>' (updated openspec/specs/ and the moved change folder), then push."
+      - "Run pnpm exec openspec validate --specs and bash scripts/check-plan.sh before pushing the archive commit."

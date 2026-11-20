@@ -5,6 +5,17 @@
 - [Task/Bug URL]()
 - [Related PR URL]()
 
+#### Plan (L3)
+
+> Link the approved OpenSpec change, or say why this is Tier 0.
+
+- OpenSpec change: `openspec/changes/<id>/` (plan commit: `plan: <id>`)
+- [ ] Tier 0: <reason — one-sentence diff, no behavior or interface change>. A person adds the `plan:tier-0` label after checking; controllers, DTOs, entities, migrations, web routes and endpoints can never be Tier 0.
+
+#### Deviations from plan
+
+> What the code does differently from design.md, and why. "None" if it matches.
+
 #### Description
 
 > Describe what it implement
