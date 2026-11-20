@@ -21,8 +21,8 @@ Work agreed in earlier levels but deferred to a later one. Move an item to its P
 
 ### Label integrity — agreed in L3
 
-- CI reads the PR timeline and accepts `plan-approved` and `tier-0` only when a person (not the agent's token or a bot) added them.
-- Count PRs that went from `plan-approved` back to `plan-review` and write the L3 "second design round" metric automatically instead of by hand in `.claude/METRICS.md`.
+- CI reads the PR timeline and accepts `plan:approved` and `plan:tier-0` only when a person (not the agent's token or a bot) added them.
+- Count PRs that went from `plan:approved` back to `plan:review` and write the L3 "second design round" metric automatically instead of by hand in `.claude/METRICS.md`.
 - The same person-only check for `status:changes-requested`, `status:done` and `status:cancelled`.
 
 ### Status labels — agreed in L3
@@ -32,7 +32,7 @@ Work agreed in earlier levels but deferred to a later one. Move an item to its P
 
 ### Other layers from the playbook
 
-- Agent hooks (`.claude/settings.json`): block destructive commands, reading `.env`, migrations against non-local DBs, and edits outside `openspec/` while the PR lacks `plan-approved`.
+- Agent hooks (`.claude/settings.json`): block destructive commands, reading `.env`, migrations against non-local DBs, and edits outside `openspec/` while the PR lacks `plan:approved`.
 - Git hooks (Lefthook, < 30 s): Prettier, ESLint, `tsc`, gitleaks on staged files.
 - CI: lint, typecheck, unit and e2e tests (MySQL service), coverage threshold, gitleaks; fail on new `eslint-disable` / `@ts-ignore` or loosened lint config.
 - Read-only reviewer agent on every PR (needs `ANTHROPIC_API_KEY` in repo secrets — owner adds it).

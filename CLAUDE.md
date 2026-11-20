@@ -29,27 +29,27 @@ Domain: book meeting rooms. Users book rooms; admins manage rooms.
 ## Plan-first (L3)
 - **Tier 0 — no plan:** the diff fits in one sentence and changes no behavior and no interface (typo, rename, copy, internal refactor). File count does not decide it: a one-file change to a status code or a rule needs a plan.
   - Never Tier 0: controllers, DTOs, entities, migrations, web `*.routes.ts`, `src/config/endpoint.ts`.
-  - Open the PR with "Tier 0: <reason>"; a **person** adds the label `tier-0` after checking the claim. Never add it yourself.
+  - Open the PR with "Tier 0: <reason>"; a **person** adds the label `plan:tier-0` after checking the claim. Never add it yourself.
   - `status:` labels apply as below (`code-review` → `done`); there is nothing to archive.
 - **Everything else needs an approved OpenSpec change before any code:**
   1. `/opsx:explore` (read-only discussion), then `/opsx:propose` — writes only `openspec/changes/<id>/`. `design.md` is the plan: files, interfaces, Mermaid diagrams, how to verify.
-  2. Commit it alone as `plan: <id>`, push, open a **draft** PR and add the label `plan-review`.
-  3. Wait. A person reviews and swaps `plan-review` for `plan-approved`. Never add `plan-approved` yourself.
-  4. `/opsx:apply` only when the PR has `plan-approved` and not `plan-review`; add `status:in-progress`.
-  5. If the plan turns out wrong: stop, `/opsx:update`, swap `plan-approved` back to `plan-review`, wait again. Code never runs ahead of the plan.
+  2. Commit it alone as `plan: <id>`, push, open a **draft** PR and add the label `plan:review`.
+  3. Wait. A person reviews and swaps `plan:review` for `plan:approved`. Never add `plan:approved` yourself.
+  4. `/opsx:apply` only when the PR has `plan:approved` and not `plan:review`; add `status:in-progress`.
+  5. If the plan turns out wrong: stop, `/opsx:update`, swap `plan:approved` back to `plan:review`, wait again. Code never runs ahead of the plan.
   6. When done: mark the PR ready for review with "Deviations from plan" filled in; swap `status:in-progress` for `status:code-review`.
   7. A person reviews the code: `status:changes-requested` sends it back (you swap it for `status:in-progress`, fix, then `status:code-review` again); `status:done` approves it.
   8. On `status:done`, `/opsx:archive` **in the same PR** as its last commit (`archive: <id>`), then a person merges. Specs and code reach `main` together; never archive on `main` after the merge.
 - If a change meant as Tier 0 turns out to alter behavior or an interface, stop and switch to the OpenSpec flow.
 
 ### Labels
-Two independent groups on every PR: the **plan gate** (`plan-approved` stays until merge; `check-plan.sh` needs it) and **one** `status:` label for where the work is.
+Two independent groups on every PR: the **plan gate** (`plan:approved` stays until merge; `check-plan.sh` needs it) and **one** `status:` label for where the work is.
 
 | Label | Meaning | Added by |
 |---|---|---|
-| `plan-review` | plan waiting for review, no code yet | agent |
-| `plan-approved` | plan approved, `/opsx:apply` may start | **person** |
-| `tier-0` | no plan needed: no behavior or interface change | **person** |
+| `plan:review` | plan waiting for review, no code yet | agent |
+| `plan:approved` | plan approved, `/opsx:apply` may start | **person** |
+| `plan:tier-0` | no plan needed: no behavior or interface change | **person** |
 | `status:in-progress` | implementing (also while fixing review comments) | agent |
 | `status:code-review` | implementation done, waiting for code review | agent |
 | `status:changes-requested` | code review asked for changes | **person** |
@@ -57,7 +57,7 @@ Two independent groups on every PR: the **plan gate** (`plan-approved` stays unt
 | `status:cancelled` | closed without merging | **person** |
 
 Keep exactly one `status:` label: remove the old one when you add the next. Never add a label marked **person**.
-- `bash scripts/check-plan.sh [base]` checks a branch: any changed code under `apps/` (tests and docs excluded) needs an OpenSpec change with `plan-approved`, or `tier-0`; interface files always need the OpenSpec change.
+- `bash scripts/check-plan.sh [base]` checks a branch: any changed code under `apps/` (tests and docs excluded) needs an OpenSpec change with `plan:approved`, or `plan:tier-0`; interface files always need the OpenSpec change.
 - Log each PR in `.claude/METRICS.md` (plan attached? second design round?). Work deferred to later levels lives in `.claude/BACKLOG.md`.
 
 ### Naming (kebab-case everywhere)

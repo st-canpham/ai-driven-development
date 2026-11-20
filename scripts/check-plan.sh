@@ -3,11 +3,11 @@
 #   bash scripts/check-plan.sh [base]   (base defaults to origin/main)
 #
 # Every changed code file under apps/ (tests and docs excluded) needs either:
-#   - an OpenSpec change under openspec/changes/ and the PR label plan-approved
-#     (and not plan-review), or
-#   - the PR label tier-0, set by a person: no behavior or interface change.
+#   - an OpenSpec change under openspec/changes/ and the PR label plan:approved
+#     (and not plan:review), or
+#   - the PR label plan:tier-0, set by a person: no behavior or interface change.
 # Interface files (controllers, DTOs, entities, migrations, web routes and
-# endpoints) can never be tier-0.
+# endpoints) can never be plan:tier-0.
 #
 # PR labels come from `gh pr view`; CHECK_PLAN_LABELS="a,b" overrides them
 # (used by tests and CI).
@@ -44,11 +44,11 @@ if [ -n "$plan_files" ]; then
   echo "OpenSpec change:"
   sed -E 's#^(openspec/changes/(archive/)?[^/]+)/.*#\1#' <<<"$plan_files" | sort -u | sed 's/^/      /'
   if [ -n "${no_pr:-}" ]; then
-    echo "WARN: no PR for this branch yet, plan-approved not checked."
+    echo "WARN: no PR for this branch yet, plan:approved not checked."
     exit 0
   fi
-  if has plan-review || ! has plan-approved; then
-    echo "FAIL: the PR needs plan-approved and not plan-review before code is merged."
+  if has plan:review || ! has plan:approved; then
+    echo "FAIL: the PR needs plan:approved and not plan:review before code is merged."
     exit 1
   fi
   echo "OK: plan approved."
@@ -56,14 +56,14 @@ if [ -n "$plan_files" ]; then
 fi
 
 if [ -n "$interface_files" ]; then
-  echo "FAIL: interface files changed without an OpenSpec change; tier-0 is not allowed here."
+  echo "FAIL: interface files changed without an OpenSpec change; plan:tier-0 is not allowed here."
   echo "      Create one with /opsx:propose."
   exit 1
 fi
-if has tier-0; then
-  echo "OK: tier-0 (a person confirmed no behavior or interface change)."
+if has plan:tier-0; then
+  echo "OK: plan:tier-0 (a person confirmed no behavior or interface change)."
   exit 0
 fi
-echo "FAIL: code changed without an OpenSpec change or the tier-0 label."
-[ -n "${no_pr:-}" ] && echo "      No PR for this branch yet: open one, then a person adds tier-0 or you run /opsx:propose."
+echo "FAIL: code changed without an OpenSpec change or the plan:tier-0 label."
+[ -n "${no_pr:-}" ] && echo "      No PR for this branch yet: open one, then a person adds plan:tier-0 or you run /opsx:propose."
 exit 1
