@@ -4,34 +4,20 @@ Work agreed in earlier levels but deferred to a later one. Move an item to its P
 
 ## L5 · Enforcement
 
-### Plan gate (CI) — agreed in L3
-
-- `.github/workflows/plan-gate.yml` on every PR, job `plan-gate`:
-  - Run `bash scripts/check-plan.sh origin/main` with `CHECK_PLAN_LABELS` from the PR labels.
-  - Fail while the PR contains `openspec/changes/<id>/` outside `archive/`: "Change `<id>` is not archived. Run `/opsx:archive` in this PR before merge."
-  - Pass when only `openspec/changes/archive/<date>-<id>/` is present, or no change (Tier 0, docs).
-  - Also run `pnpm exec openspec validate --specs`, and check that `openspec/specs/` changed when an archived change has delta specs (stops a hand-moved folder from passing).
-- Ruleset on `main`: changes only through PRs; `plan-gate` is a required status check; **empty bypass list** so admins cannot merge past it.
-- Known limit: an admin can still edit or disable the ruleset. The gate protects against forgetting, not against intent.
-
 ### Label integrity — agreed in L3
 
-- CI reads the PR timeline and accepts `plan:approved` only when a person (not the agent's token or a bot) added it.
-- `plan:tier-0` may come from the agent: CI checks that the PR body has a "Tier 0: <reason>" line, and keeps failing on interface files.
+- Decided (L5): the agent and the owner share one GitHub account, so CI cannot tell who added a label. The L5b `change-gate` hook blocks the agent from adding `plan:approved`, `status:changes-requested`, `status:done` or `status:cancelled`. A bot identity for the agent would let CI verify it; not planned.
 - Count PRs that went from `plan:approved` back to `plan:review` and write the L3 "second design round" metric automatically instead of by hand in `.claude/METRICS.md`.
-- The same person-only check for `status:changes-requested`, `status:done` and `status:cancelled`.
 
 ### Status labels — agreed in L3
 
-- Fail the plan gate when a PR has zero or more than one `status:` label, and block merge unless it is `status:done`.
 - Automate the moves the agent does by hand today: `status:in-progress` when the first code commit lands, `status:code-review` when the PR leaves draft, `status:cancelled` when a PR is closed unmerged.
 
 ### Other layers from the playbook
 
-- Agent hooks (`.claude/settings.json`): block destructive commands, reading `.env`, migrations against non-local DBs, and edits outside `openspec/` while the PR lacks `plan:approved`.
-- Git hooks (Lefthook, < 30 s): Prettier, ESLint, `tsc`, gitleaks on staged files.
-- CI: lint, typecheck, unit and e2e tests (MySQL service), coverage threshold, gitleaks; fail on new `eslint-disable` / `@ts-ignore` or loosened lint config.
-- Read-only reviewer agent on every PR (needs `ANTHROPIC_API_KEY` in repo secrets — owner adds it).
+- L5b agent hooks in Node (`.mjs`), fail-closed, tested on host and container: access-guard (`.env*`, `gh auth token`, paths outside the repo), change-gate (push to main, `--no-verify`, `core.hooksPath`, `reset --hard`, `git worktree prune`, `gh pr merge`, person-only labels, `npx`; ask for `pnpm add` and high-risk paths), PostToolUse lint + typecheck + related test, block code edits while the PR lacks `plan:approved`.
+- L5c git hooks: `.githooks/pre-commit` via `core.hooksPath` (no Lefthook), < 30 s: gitleaks, Prettier and ESLint on staged files; fails if gitleaks is missing.
+- L5d read-only reviewer: `claude-code-action@v1`, inline comments only, skips drafts; secret `CLAUDE_CODE_OAUTH_TOKEN` (`claude setup-token`) or `ANTHROPIC_API_KEY`, added by the owner. Local `.claude/agents/reviewer.md` with structured findings and a 3-pass cap.
 
 ## L6 · Spec + TDD
 

@@ -13,7 +13,8 @@
 # PR labels come from `gh pr view`; CHECK_PLAN_LABELS="a,b" overrides them
 # (used by tests and CI).
 set -euo pipefail
-cd "$(dirname "$0")/.."
+# Repo root from git, not from the script path: CI runs a copy taken from main.
+cd "$(git rev-parse --show-toplevel)"
 
 base="${1:-origin/main}"
 changed=$(git diff --name-only "$base"...HEAD)

@@ -1,0 +1,88 @@
+# L5 CI gate: lint, types, tests, e2e, coverage on changed files, suppressions, secrets.
+# Required by the ruleset on main (check name: ci).
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A verdict must never outlive the commit it judged.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read # gitleaks-action lists the PR's commits
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4 # version from package.json "packageManager"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Base ref
+        run: |
+          base="origin/${{ github.event.pull_request.base.ref || 'main' }}"
+          [ "${{ github.event_name }}" = push ] && base="${{ github.event.before }}"
+          echo "BASE=$base" >> "$GITHUB_ENV"
+
+      - name: No new suppressions
+        run: bash scripts/check-suppressions.sh "$BASE"
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests with coverage
+        run: pnpm test:cov
+
+      - name: Coverage of changed files (>= 70%)
+        run: node scripts/check-coverage.mjs "$BASE"
+
+      # Throwaway MySQL: the password is generated here and never committed.
+      - name: Start MySQL
+        run: |
+          pw=$(openssl rand -hex 16)
+          echo "::add-mask::$pw"
+          docker run -d --name mysql -p 3306:3306 \
+            -e MYSQL_ROOT_PASSWORD="$pw" -e MYSQL_DATABASE=app_ci \
+            -e MYSQL_USER=app_ci -e MYSQL_PASSWORD="$pw" mysql:8.4
+          sed -e "s/^DB_NAME=.*/DB_NAME=app_ci/" -e "s/^DB_USER=.*/DB_USER=app_ci/" \
+            -e "s/^DB_PASSWORD=.*/DB_PASSWORD=$pw/" apps/api/.env.example > apps/api/.env
+          cp apps/web/.env.example apps/web/.env
+          for i in $(seq 1 60); do
+            docker exec mysql mysqladmin ping -h 127.0.0.1 -uapp_ci -p"$pw" --silent 2>/dev/null && exit 0
+            sleep 2
+          done
+          docker logs mysql; exit 1
+
+      - name: Migrations
+        run: pnpm --filter api migration:run
+
+      - name: E2E tests
+        run: pnpm --filter api test:e2e
+
+      - name: Build
+        run: pnpm build
+
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
