@@ -81,8 +81,9 @@ Keep exactly one `status:` label: remove the old one when you add the next. Neve
 - **One task = one worktree, one branch, one session.** Never work on a task in the main checkout, and never use `claude -w` or a plain `git worktree add`: they get no own ports or schema.
 - Start a task inside the Dev Container from the main checkout: `pnpm task:new <change-id>`, then `cd .worktrees/<change-id> && claude`. Do the whole Plan-first flow there.
 - Each worktree gets its own branch (naming rules), port slot 1–9 (API `3100+slot`, web `5173+slot`, published on the host), MySQL schema `<DB_NAME>_<change_id>` (migrations applied; the read-only MCP sees it), `.env` files and `node_modules`. The main checkout keeps 3100 / 5173 / `DB_NAME`.
-- After the PR merges: `pnpm task:clean <change-id>` stops processes in the worktree, drops its schema, removes it and deletes the branch when its commits are in `origin/main`. A squash-merged branch needs `--force`, only after confirming the PR merged.
-- Worktrees store container paths: create, remove and prune them **only inside the Dev Container**, never with git on the host (the scripts refuse to run there).
+- After the PR merges: `pnpm task:clean <change-id>` stops processes in the worktree, then drops its schema, removes it and deletes the branch when its commits are in `origin/main`. A squash-merged branch needs `--force`, only after confirming the PR merged.
+- Worktrees store container paths: create and remove them **only inside the Dev Container** (the scripts refuse to run on the host). Worktrees you make on the host for yourself stay on the host.
+- **Never run `git worktree prune`**, on either side: each side sees the other's worktrees as missing and would delete their metadata (`gc.worktreePruneExpire=never` only protects `git gc`). Use `git worktree remove <path>` or `task:clean`.
 - Any state outside git (queues, Redis keys, uploads, caches) must be isolated per worktree (prefix with the schema name or slot) before it is added.
 
 ## Sessions and rules

@@ -139,9 +139,9 @@ Run `pnpm dev:api` / `pnpm dev:web` inside the worktree to use its ports. After 
 pnpm task:clean add-room-management      # add --force for a squash-merged branch
 ```
 
-It stops processes still running in the worktree, drops its schema, removes the worktree and deletes the branch once its commits are in `origin/main`. Without `--force` it refuses a worktree with uncommitted changes and keeps an unmerged branch.
+It stops processes still running in the worktree, then drops its schema, removes the worktree and deletes the branch once its commits are in `origin/main`. Without `--force` it refuses a worktree with uncommitted changes and keeps an unmerged branch.
 
-> Worktrees store container paths. Create, remove and prune them only inside the Dev Container — never with `git worktree` on the host.
+> Worktrees store container paths. Create and remove task worktrees only inside the Dev Container. **Never run `git worktree prune`** on the host or in the container: it deletes the other side's worktrees, whose paths it cannot see. Use `git worktree remove <path>` instead.
 
 ## Troubleshooting
 
@@ -156,7 +156,7 @@ It stops processes still running in the worktree, drops its schema, removes the 
 | Claude asks to log in again after a container rebuild | Known limitation: the login lives inside the container and is lost on rebuild |
 | `run this inside the Dev Container` from `task:new` / `task:clean` | Open a container shell first: `pnpm dc:shell` |
 | `all 9 port slots are in use` | Clean finished tasks with `pnpm task:clean <change-id>` |
-| `git worktree list` on the host shows a task as prunable | Expected: the path only exists inside the container. Do not prune it on the host |
+| `git worktree list` shows a worktree as prunable | Expected: it was created on the other side (host vs container). Do not run `git worktree prune` |
 
 ## How MySQL is initialised
 

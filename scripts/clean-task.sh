@@ -30,19 +30,6 @@ schema=$(sed -n 's/^DB_NAME=//p' "$wt/apps/api/.env")
 # Never drop the main database: only schemas created by new-task.sh qualify.
 [[ "$schema" == "${DB_NAME}_"* ]] || die "refusing to drop '$schema': it is not a task schema (${DB_NAME}_*)."
 
-echo "==> Drop MySQL schema $schema"
-SCHEMA="$schema" node -e '
-  const mysql = require(require.resolve("mysql2/promise", { paths: [process.argv[1]] }));
-  (async () => {
-    const c = await mysql.createConnection({
-      host: process.env.DB_HOST, port: Number(process.env.DB_PORT),
-      user: "root", password: process.env.DB_ROOT_PASSWORD,
-    });
-    await c.query(`DROP DATABASE IF EXISTS \`${process.env.SCHEMA}\``);
-    await c.end();
-  })().catch((e) => { console.error(e.message); process.exit(1); });
-' "$root/apps/api"
-
 # Stop dev servers and other processes still running inside the worktree,
 # so nothing keeps serving from (or writing to) a deleted folder.
 abs="$root/$wt"
@@ -60,9 +47,24 @@ if [ -n "$pids" ]; then
   kill -9 $pids 2>/dev/null || true
 fi
 
+echo "==> Drop MySQL schema $schema"
+SCHEMA="$schema" node -e '
+  const mysql = require(require.resolve("mysql2/promise", { paths: [process.argv[1]] }));
+  (async () => {
+    const c = await mysql.createConnection({
+      host: process.env.DB_HOST, port: Number(process.env.DB_PORT),
+      user: "root", password: process.env.DB_ROOT_PASSWORD,
+    });
+    await c.query(`DROP DATABASE IF EXISTS \`${process.env.SCHEMA}\``);
+    await c.end();
+  })().catch((e) => { console.error(e.message); process.exit(1); });
+' "$root/apps/api"
+
 echo "==> Remove worktree $wt"
+# `remove` cleans this worktree's own metadata. Never run `git worktree prune`:
+# it would also drop worktrees created on the host, whose paths this container
+# cannot see.
 git worktree remove ${force:+--force} "$wt"
-git worktree prune
 
 if [ -n "$branch" ]; then
   git fetch -q origin
