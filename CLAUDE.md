@@ -88,7 +88,7 @@ Keep exactly one `status:` label: remove the old one when you add the next. Neve
 
 ## Enforcement (L5)
 - Merging to `main` needs two green checks, required by a ruleset with no bypass (admins included):
-  - **`ci`**: no new suppressions (`eslint-disable`, `@ts-ignore`/`@ts-expect-error`, `it.only`/`.skip`, coverage ignores), lint, typecheck, unit tests, **≥ 70% statement coverage on every changed source file**, migrations, e2e on a throwaway MySQL, build, gitleaks.
+  - **`ci`**: no new suppressions (`eslint-disable`, `@ts-ignore`/`@ts-expect-error`, `it.only`/`.skip`, coverage ignores), lint, typecheck, unit tests, **≥ 80% statement coverage on every changed source file**, migrations, e2e on a throwaway MySQL, build, gitleaks.
   - **`plan-gate`**: `check-plan.sh`; no un-archived OpenSpec change; `openspec validate --specs`; `plan:tier-0` has a "Tier 0: <reason>" line; exactly one `status:` label and it is `status:done`; the PR body keeps the template's *Plan* and *Deviations from plan* headings.
 - `plan-gate` runs its scripts from the base branch, so a PR cannot loosen the gate that judges it.
 - Never make a check pass by silencing it: fix the code or the test. Lint/type/test config changes are flagged for the reviewer.

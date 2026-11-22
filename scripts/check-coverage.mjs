@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // L5 CI gate: every source file changed on this branch must have at least
-// COVERAGE_MIN % statement coverage (default 70).
+// COVERAGE_MIN % statement coverage (default 80).
 //   node scripts/check-coverage.mjs [base]   (base defaults to origin/main)
 // Run `pnpm test:cov` first: it writes apps/*/coverage/coverage-final.json.
 import { execFileSync } from 'node:child_process';
@@ -8,7 +8,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const base = process.argv[2] ?? 'origin/main';
-const min = Number(process.env.COVERAGE_MIN ?? 70);
+const min = Number(process.env.COVERAGE_MIN ?? 80);
 const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 
 // Files that hold wiring or config, not logic worth a unit test.

@@ -53,7 +53,7 @@ jobs:
       - name: Unit tests with coverage
         run: pnpm test:cov
 
-      - name: Coverage of changed files (>= 70%)
+      - name: Coverage of changed files (>= 80%)
         run: node scripts/check-coverage.mjs "$BASE"
 
       # Throwaway MySQL: the password is generated here and never committed.
