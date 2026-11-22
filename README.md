@@ -114,6 +114,35 @@ On the first run:
    - `context7` — library docs
 3. Read [`CLAUDE.md`](CLAUDE.md). Feature work starts with `/opsx:propose "..."` (OpenSpec).
 
+## Working on a task (one worktree per task)
+
+Every task gets its own git worktree, branch, ports and MySQL schema, so several tasks can run side by side without touching each other. Run these **inside the Dev Container**, from the main checkout:
+
+```bash
+pnpm task:new add-room-management        # worktree .worktrees/add-room-management
+cd .worktrees/add-room-management
+claude                                   # one Claude session per task
+```
+
+`task:new` prints what the task got:
+
+| | Main checkout | Task in slot *n* (1–9) |
+|---|---|---|
+| Branch | `main` | from the change id: `add-room-management` → `feat/room-management` |
+| API | http://localhost:3100/api | http://localhost:310*n*/api |
+| Web | http://localhost:5173 | http://localhost:517(3+*n*) |
+| MySQL schema | `DB_NAME` | `DB_NAME_add_room_management` (migrations applied) |
+
+Run `pnpm dev:api` / `pnpm dev:web` inside the worktree to use its ports. After the PR is merged:
+
+```bash
+pnpm task:clean add-room-management      # add --force for a squash-merged branch
+```
+
+It stops processes still running in the worktree, then drops its schema, removes the worktree and deletes the branch once its commits are in `origin/main`. Without `--force` it refuses a worktree with uncommitted changes and keeps an unmerged branch.
+
+> Worktrees store container paths. Create and remove task worktrees only inside the Dev Container. **Never run `git worktree prune`** on the host or in the container: it deletes the other side's worktrees, whose paths it cannot see. Use `git worktree remove <path>` instead.
+
 ## Troubleshooting
 
 | Symptom | Fix |
@@ -125,6 +154,9 @@ On the first run:
 | `.env` changes have no effect on MySQL | Users and passwords are only created when the `mysql-data` volume is first created. Change them with `ALTER USER`, or delete the volume with `docker compose down -v` (**deletes all DB data**) |
 | Docker hangs | Free disk space and give Docker more RAM, then restart Docker Desktop |
 | Claude asks to log in again after a container rebuild | Known limitation: the login lives inside the container and is lost on rebuild |
+| `run this inside the Dev Container` from `task:new` / `task:clean` | Open a container shell first: `pnpm dc:shell` |
+| `all 9 port slots are in use` | Clean finished tasks with `pnpm task:clean <change-id>` |
+| `git worktree list` shows a worktree as prunable | Expected: it was created on the other side (host vs container). Do not run `git worktree prune` |
 
 ## How MySQL is initialised
 
