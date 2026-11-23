@@ -8,7 +8,9 @@
   // The repo ROOT is mounted (not a worktree folder) so git worktrees keep working (L4).
   "workspaceFolder": "/workspaces/ai-driven-development",
   "features": {
-    "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1": {},
+    // gh for PR work; it logs in with a fine-grained PAT (see .devcontainer/github-auth.md).
+    "ghcr.io/devcontainers/features/github-cli:1": { "version": "2.103.3" }
   },
   // Env vars and published ports live in docker-compose.devcontainer.yml so they also
   // apply to `docker exec` sessions (pnpm dc:shell / dc:claude) and the devcontainer CLI.

@@ -90,14 +90,18 @@ pnpm dev:api   # http://localhost:3100/api
 pnpm dev:web   # http://localhost:5173
 ```
 
-### 5. Check that everything works
+### 5. Give the agent GitHub access (Dev Container)
+
+The agent pushes and opens draft PRs from the container with a fine-grained token for this repository only. Create it and log in once per machine: [.devcontainer/github-auth.md](.devcontainer/github-auth.md).
+
+### 6. Check that everything works
 
 ```bash
 pnpm build && pnpm lint && pnpm test
 pnpm --filter api test:e2e   # needs MySQL running
 ```
 
-### 6. Use Claude Code
+### 7. Use Claude Code
 
 Run `claude` in the repo — inside the container for options A and B. From a host terminal you can also open a running container directly:
 
