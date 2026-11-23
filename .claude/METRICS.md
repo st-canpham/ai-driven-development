@@ -5,19 +5,27 @@ One row per merged PR. Used to check the level gates from the playbook.
 ## L3 · Plan-first
 
 Gates: multi-file PRs with an approved plan attached = **100%**; PRs that needed a second design round **< 10%**.
-"Second round" = the PR went back from `plan:approved` to `plan:review`.
+"Second round" = `plan:review` was added again after `plan:approved`.
 
+Generated from GitHub (labels, files, commits of every merged PR); do not edit the rows by hand. Refresh in any PR with `node scripts/metrics.mjs --write`. PRs #1–#3 predate the plan labels and show `none`.
+
+<!-- metrics:l3:start -->
 | Date | PR | Change id / Tier 0 | Code files | Plan approved before code? | Second design round? |
 |---|---|---|---|---|---|
-| 2026-11-18 | #1 L1 basic setup | before L3 (no plan gate yet) | 70 | n/a | n/a |
-| 2026-11-19 | #2 L2 advanced setup | before L3 (no plan gate yet) | 3 | n/a | n/a |
-| 2026-11-20 | #3 L3 plan-first workflow | before `plan:tier-0` existed; docs and tooling | 0 | n/a | n/a |
-| 2026-11-22 | #4 L4 isolation | Tier 0: tooling and Dev Container | 2 (config) | n/a (Tier 0) | No |
-| 2026-11-23 | #5 L5a CI and merge gate | Tier 0: CI and gate scripts | 2 (config) | n/a (Tier 0) | No |
-| 2026-11-23 | #7 GitHub access from the Dev Container | Tier 0: Dev Container config and docs | 0 | n/a (Tier 0) | No |
-| 2026-11-23 | #6 L5b agent hooks | Tier 0: hooks, CI step, gate scripts | 0 | n/a (Tier 0) | No |
-| 2026-11-23 | #8 change-gate tests independent of the branch | Tier 0: hook tests and metrics log | 0 | n/a (Tier 0) | No |
-| 2026-11-23 | #9 L5c pre-commit hook, githooks-guard, destructive-command rules | Tier 0: git hook, agent hooks, Dev Container, CI pin, docs | 0 | n/a (Tier 0) | No |
+| 2026-11-18 | #1 chore: L1 basic setup for Room Booking lab | none | 70 | n/a (none) | n/a |
+| 2026-11-19 | #2 chore: L2 advanced setup (sandbox, MCP, session hygiene) | none | 3 | n/a (none) | n/a |
+| 2026-11-20 | #3 chore: L3 plan-first workflow | none | 0 | n/a (none) | n/a |
+| 2026-11-22 | #4 chore: L4 isolation - one worktree per task | Tier 0 | 2 | n/a (Tier 0) | n/a |
+| 2026-11-23 | #5 chore: L5a CI gate and merge gate | Tier 0 | 2 | n/a (Tier 0) | n/a |
+| 2026-11-23 | #6 chore: L5b agent hooks (access-guard, change-gate, check-edit) | Tier 0 | 0 | n/a (Tier 0) | n/a |
+| 2026-11-23 | #7 chore: GitHub access from the Dev Container (fine-grained token) | Tier 0 | 0 | n/a (Tier 0) | n/a |
+| 2026-11-23 | #8 test: change-gate git cases independent of the checked-out branch | Tier 0 | 0 | n/a (Tier 0) | n/a |
+| 2026-11-23 | #9 chore: L5c pre-commit hook, githooks-guard, destructive-command rules | Tier 0 | 0 | n/a (Tier 0) | n/a |
+| 2026-11-23 | #10 chore: L5d local agent workflow (TDD loop, test review, review loop, advisor) | Tier 0 | 0 | n/a (Tier 0) | n/a |
+
+- Plan approved before code, multi-file OpenSpec PRs: 0/0 = n/a (gate 100%)
+- Second design round: 0/0 = n/a (gate < 10%)
+<!-- metrics:l3:end -->
 
 ## L4 · Isolation
 

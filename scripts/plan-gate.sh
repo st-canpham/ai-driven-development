@@ -9,7 +9,12 @@
 #   4. plan:tier-0 comes with a "Tier 0: <reason>" line in the PR body
 #   5. exactly one status: label, and it is status:done
 #   6. the PR body keeps the template's Plan and Deviations headings
-# Labels and body are read live from GitHub, never from the event payload.
+#   7. code under apps/ has a recorded clean review: a PR comment
+#      `<!-- review: clean <sha> -->` (posted by /review-loop, by someone with write access)
+#      whose apps/ equals the PR head's (PR_HEAD_SHA, else HEAD^2 of a merge, else HEAD)
+#   8. (info, never fails) the control-plane paths the PR touches, from the base
+#      branch's .github/CODEOWNERS; also written to the job summary
+# Labels, body and comments are read live from GitHub, never from the event payload.
 set -uo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -29,6 +34,15 @@ else
   body=$(gh pr view "$pr" --json body -q '.body') || { echo "FAIL could not read PR #$pr body"; exit 1; }
 fi
 changed=$(git diff --name-only "$base"...HEAD) || { echo "FAIL git diff against $base"; exit 1; }
+# Comments only matter when apps/ changed (check 7); PLAN_GATE_COMMENTS overrides them for tests.
+if [ -n "${PLAN_GATE_COMMENTS+x}" ]; then
+  comments=$PLAN_GATE_COMMENTS
+elif grep -q '^apps/' <<<"$changed"; then
+  # Only people with write access count: the repo is public, anyone can comment.
+  comments=$(gh pr view "$pr" --json comments -q '.comments[] | select(.authorAssociation == "OWNER" or .authorAssociation == "MEMBER" or .authorAssociation == "COLLABORATOR") | .body') || { echo "FAIL could not read PR #$pr comments"; exit 1; }
+else
+  comments=""
+fi
 
 failed=0
 ok() { echo "OK    $*"; }
@@ -83,6 +97,50 @@ fi
 for h in '#### Plan (L3)' '#### Deviations from plan'; do
   if grep -qxF "$h" <<<"$(tr -d '\r' <<<"$body")"; then ok "PR body has '$h'"; else bad "PR body is missing the '$h' heading from the template"; fi
 done
+
+# 7. Local review recorded for the code under apps/
+if grep -q '^apps/' <<<"$changed"; then
+  # Compare with the PR's own head, not with HEAD: in CI, HEAD is GitHub's merge of the
+  # PR into the current base, which also carries apps/ changes merged to main since.
+  if [ -n "${PR_HEAD_SHA:-}" ]; then
+    head=$PR_HEAD_SHA
+  elif git rev-parse -q --verify HEAD^2 >/dev/null; then
+    head=$(git rev-parse HEAD^2)
+  else
+    head=$(git rev-parse HEAD)
+  fi
+  reviewed=""
+  for sha in $(grep -oE '<!-- review: clean [0-9a-f]{7,40} -->' <<<"$comments" | awk '{print $4}' || true); do
+    if git cat-file -e "$sha^{commit}" 2>/dev/null && git diff --quiet "$sha" "$head" -- apps; then reviewed=$sha; break; fi
+  done
+  if [ -n "$reviewed" ]; then
+    ok "apps/ reviewed: /review-loop recorded a clean review at $reviewed (apps/ unchanged since)"
+  else
+    bad "code under apps/ has no clean review of its current state: run /review-loop; its clean pass posts '<!-- review: clean <sha> -->' on the PR"
+  fi
+fi
+
+# 8. Control plane touched (information for the reviewer, never fails)
+owners=$(git show "$base:.github/CODEOWNERS" 2>/dev/null | sed 's/#.*//' | awk 'NF {print $1}' || true)
+if [ -n "$owners" ]; then
+  touched=$(while read -r f; do
+    [ -z "$f" ] && continue
+    while read -r p; do
+      p=${p#/}
+      # A trailing / means the whole folder; otherwise the file itself (or a folder of that name).
+      if [[ "$f" == "$p" || "$f" == "${p%/}"/* ]]; then echo "$f"; break; fi
+    done <<<"$owners"
+  done <<<"$changed")
+  if [ -n "$touched" ]; then
+    echo "INFO  control plane touched ($(grep -c . <<<"$touched") files, review closely):"
+    indent <<<"$touched"
+    if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+      { echo "### Control plane touched"; echo; echo "From \`.github/CODEOWNERS\` on the base branch. Review these closely:"; echo; sed 's/^/- `/; s/$/`/' <<<"$touched"; } >>"$GITHUB_STEP_SUMMARY"
+    fi
+  else
+    ok "no control-plane path touched"
+  fi
+fi
 
 echo
 [ "$failed" -eq 0 ] && echo "plan-gate: PASS" || echo "plan-gate: FAIL"

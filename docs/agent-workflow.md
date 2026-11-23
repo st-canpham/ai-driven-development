@@ -198,11 +198,20 @@ and gets exactly one disposition:
 | `no change needed` | the finding is wrong | the input or quote that proves it |
 | `out of scope` | real, but not this change | why, and where it is tracked |
 
-**Hard cap: 3 passes.** A pass that ends `VERDICT: clean` with green suites runs
-`node .claude/hooks/review-gate.mjs --mark`. If pass 3 still has an open `fix now`
-finding, the loop stops without marking, and the open findings go into the PR as
-**blocked**: three passes without converging means a person decides. The last
+**Hard cap: 3 passes.** A pass that ends `VERDICT: clean` with green suites, after
+everything is committed and pushed, runs `node .claude/hooks/review-gate.mjs --mark` and
+posts a PR comment `<!-- review: clean <HEAD sha> -->`. If pass 3 still has an open
+`fix now` finding, the loop stops without marking, and the open findings go into the PR
+as **blocked**: three passes without converging means a person decides. The last
 disposition table goes under *Deviations from plan*.
+
+The marker is what CI checks: `plan-gate` fails while the code under `apps/` at the PR's
+head differs from every commit with a clean-review marker. Only comments from people with
+write access count. Changes merged to `main` by other PRs do not invalidate it (the
+check compares the PR head, not GitHub's merge commit). The archive commit (only
+`openspec/`) keeps the marker valid; a fix after `status:changes-requested` needs a new
+review and a new marker, and so does a rebase or force-push of the branch (the reviewed
+commit disappears), so merge `origin/main` instead of rebasing after a review.
 
 ## The advisor
 
@@ -241,6 +250,8 @@ CI).
 | `check-edit` | after every edit in `apps/*/src|test` | Prettier, ESLint and the related unit test of the edited file |
 | `change-gate`, `access-guard`, `githooks-guard` | before every tool call | the L5 rules (protected branches, secrets, destructive commands, skipping git hooks, plan gate) |
 | `.githooks/pre-commit` | every commit | gitleaks, Prettier `--check`, ESLint on staged files |
+| `plan-gate` (CI, required) | every PR event | among its checks: the clean-review marker for the current `apps/`; lists control-plane paths from the base `CODEOWNERS` |
+| `status-labels` (CI) | PR opened, pushed, ready, back to draft, closed | moves the single `status:` label, so the orchestrator rarely has to |
 
 ### `review-gate` in practice
 

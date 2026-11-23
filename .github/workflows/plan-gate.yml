@@ -57,4 +57,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
+          # The checkout is the merge of the PR into the base; check 7 compares with the PR's own head.
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: bash "$RUNNER_TEMP/gate/plan-gate.sh" "origin/${{ github.event.pull_request.base.ref }}"

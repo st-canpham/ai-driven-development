@@ -58,9 +58,9 @@ Two independent groups on every PR: the **plan gate** (`plan:approved` stays unt
 | `status:done` | code approved; archive, then merge | **person** |
 | `status:cancelled` | closed without merging | **person** |
 
-Keep exactly one `status:` label: remove the old one when you add the next. Never add a label marked **person**.
+Keep exactly one `status:` label: remove the old one when you add the next. Never add a label marked **person**. The `status-labels` workflow makes the agent moves (and `status:cancelled` on an unmerged close) on its own; set a label yourself only when it has not run.
 - `bash scripts/check-plan.sh [base]` checks a branch: every change needs an OpenSpec change with `plan:approved`, or `plan:tier-0`; interface files always need the OpenSpec change. Tests: `node --test scripts/test/*.test.mjs`.
-- Log each PR in `.claude/METRICS.md` (plan attached? second design round?). Work deferred to later levels lives in `.claude/BACKLOG.md`.
+- L3 metrics live in `.claude/METRICS.md`; refresh the generated table with `node scripts/metrics.mjs --write` in any PR (it reads labels, files and commits from GitHub). Work deferred to later levels lives in `.claude/BACKLOG.md`.
 
 ### Naming (kebab-case everywhere)
 | What | Rule | Example |
@@ -91,8 +91,10 @@ Keep exactly one `status:` label: remove the old one when you add the next. Neve
 ## Enforcement (L5)
 - Merging to `main` needs two green checks, required by a ruleset with no bypass (admins included):
   - **`ci`**: no new suppressions (`eslint-disable`, `@ts-ignore`/`@ts-expect-error`, `it.only`/`.skip`, coverage ignores), lint, typecheck, unit tests, **≥ 80% statement coverage on every changed source file**, migrations, e2e on a throwaway MySQL, build, gitleaks.
-  - **`plan-gate`**: `check-plan.sh`; no un-archived OpenSpec change; `openspec validate --specs`; `plan:tier-0` has a "Tier 0: <reason>" line; exactly one `status:` label and it is `status:done`; the PR body keeps the template's *Plan* and *Deviations from plan* headings.
-- `plan-gate` runs its scripts from the base branch, so a PR cannot loosen the gate that judges it.
+  - **`plan-gate`**: `check-plan.sh`; no un-archived OpenSpec change; `openspec validate --specs`; `plan:tier-0` has a "Tier 0: <reason>" line; exactly one `status:` label and it is `status:done`; the PR body keeps the template's *Plan* and *Deviations from plan* headings; when `apps/` changed, a PR comment `<!-- review: clean <sha> -->` from `/review-loop` whose `apps/` equals HEAD's. It also lists the control-plane paths the PR touches (from the base branch's `.github/CODEOWNERS`) for the reviewer.
+- Not required, but run on every PR: **`status-labels`** keeps the single `status:` label in step (first code commit on an approved draft → `in-progress`, ready for review → `code-review`, push after `changes-requested` → `in-progress`, back to draft → `in-progress`, closed unmerged → `cancelled`; never moves `done`); **`security`** runs CodeQL and Dependency Review (vulnerable or copyleft dependencies). L3 metrics come from `node scripts/metrics.mjs --write`.
+- `plan-gate` runs its scripts from the base branch, so editing `scripts/` in a PR does not loosen the gate that judges it. The workflow YAML itself comes from the PR, so a PR that edits `.github/workflows/` could; that is why `.github/` is control plane: `change-gate` asks before the agent edits it and `plan-gate` lists it for the person's review.
+- The ruleset is kept as code in `.github/rulesets/main-protection.json` (import format). Change it only in a PR; a person applies it to the live ruleset (id `27871876`) with `gh api -X PUT repos/st-canpham/ai-driven-development/rulesets/27871876 --input .github/rulesets/main-protection.json`, or through Settings → Rules → Rulesets → Import. The agent never applies it (`change-gate` denies ruleset writes).
 - Never make a check pass by silencing it: fix the code or the test. Lint/type/test config changes are flagged for the reviewer.
 - **Agent hooks** (`.claude/settings.json` → `.claude/hooks/*.mjs`) run before and after your tool calls. They only return *ask* or *deny*, and block when they cannot read their input:
   - `access-guard`: denies `.env*` files, keys and credential stores, `gh auth token`; asks before touching files outside the repo.

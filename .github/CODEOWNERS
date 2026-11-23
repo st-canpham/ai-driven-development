@@ -1,0 +1,23 @@
+# Control plane: the files that decide how the agent works and what the gates check.
+# plan-gate reads this file from the base branch (never the PR head) and lists the
+# control-plane paths a PR touches, so the reviewer checks them closely. The owner and
+# the agent share one GitHub account, so a code-owner review cannot be required; the
+# agent hooks already ask before editing these paths (change-gate high-risk).
+# Patterns are anchored at the repo root; a trailing / means the whole folder.
+
+/.github/                     @st-canpham
+/.claude/                     @st-canpham
+/.githooks/                   @st-canpham
+/.devcontainer/               @st-canpham
+/scripts/                     @st-canpham
+/docker/                      @st-canpham
+/docker-compose.yml           @st-canpham
+/openspec/schemas/            @st-canpham
+/openspec/config.yaml         @st-canpham
+/CLAUDE.md                    @st-canpham
+/apps/web/CLAUDE.md           @st-canpham
+/package.json                 @st-canpham
+/pnpm-lock.yaml               @st-canpham
+/pnpm-workspace.yaml          @st-canpham
+/.mcp.json                    @st-canpham
+/.gitignore                   @st-canpham
