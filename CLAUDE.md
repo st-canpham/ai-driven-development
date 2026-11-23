@@ -28,9 +28,11 @@ Domain: book meeting rooms. Users book rooms; admins manage rooms.
 - Feature work goes through OpenSpec (see Plan-first). Living specs in `openspec/specs/`, in-flight changes in `openspec/changes/`, project schema in `openspec/schemas/room-booking/`.
 
 ## Plan-first (L3)
-- **Tier 0 — no plan:** the diff fits in one sentence and changes no behavior and no interface (typo, rename, copy, internal refactor). File count does not decide it: a one-file change to a status code or a rule needs a plan.
+- **Every PR declares its plan with a label**: `plan:approved` for an OpenSpec change, otherwise `plan:tier-0`. Documentation-only PRs add `type:docs` too.
+- **Tier 0 — no plan:** the diff fits in one sentence and changes no behavior and no interface (typo, rename, copy, internal refactor, config, tooling, CI, hooks, Dev Container, docs). File count does not decide it: a one-file change to a status code or a rule needs a plan.
   - Never Tier 0: controllers, DTOs, entities, migrations, web `*.routes.ts`, `src/config/endpoint.ts`.
-  - When the change cannot affect any spec (config, tooling, docs, internal refactor), you may add `plan:tier-0` yourself and must write "Tier 0: <reason>" in the PR body and in a PR comment. The reviewer removes the label if they disagree, and then the OpenSpec flow applies.
+  - When the change cannot affect any spec, you add `plan:tier-0` yourself and must write "Tier 0: <reason>" in the PR body and in a PR comment. The reviewer removes the label if they disagree, and then the OpenSpec flow applies.
+  - Documentation only (`*.md` outside `openspec/` and `.claude/`, not `CLAUDE.md`): also add `type:docs`, so readers know the implementation is untouched. `type:docs` on a PR that changes anything else fails `check-plan`.
   - `status:` labels apply as below (`code-review` → `done`); there is nothing to archive.
 - **Everything else needs an approved OpenSpec change before any code:**
   1. `/opsx:explore` (read-only discussion), then `/opsx:propose` — writes only `openspec/changes/<id>/`. `design.md` is the plan: files, interfaces, Mermaid diagrams, how to verify.
@@ -51,6 +53,7 @@ Two independent groups on every PR: the **plan gate** (`plan:approved` stays unt
 | `plan:review` | plan waiting for review, no code yet | agent |
 | `plan:approved` | plan approved, `/opsx:apply` may start | **person** |
 | `plan:tier-0` | no plan needed: no behavior or interface change | agent, with the reason in the PR |
+| `type:docs` | documentation only, implementation untouched (with `plan:tier-0`) | agent |
 | `status:in-progress` | implementing (also while fixing review comments) | agent |
 | `status:code-review` | implementation done, waiting for code review | agent |
 | `status:changes-requested` | code review asked for changes | **person** |
@@ -58,7 +61,7 @@ Two independent groups on every PR: the **plan gate** (`plan:approved` stays unt
 | `status:cancelled` | closed without merging | **person** |
 
 Keep exactly one `status:` label: remove the old one when you add the next. Never add a label marked **person**.
-- `bash scripts/check-plan.sh [base]` checks a branch: any changed code under `apps/` (tests and docs excluded) needs an OpenSpec change with `plan:approved`, or `plan:tier-0`; interface files always need the OpenSpec change.
+- `bash scripts/check-plan.sh [base]` checks a branch: every change needs an OpenSpec change with `plan:approved`, or `plan:tier-0` (+ `type:docs` when it is documentation only); interface files always need the OpenSpec change. Tests: `node --test scripts/test/*.test.mjs`.
 - Log each PR in `.claude/METRICS.md` (plan attached? second design round?). Work deferred to later levels lives in `.claude/BACKLOG.md`.
 
 ### Naming (kebab-case everywhere)
