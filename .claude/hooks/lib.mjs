@@ -69,7 +69,8 @@ const readStdin = async () => {
 };
 
 const emit = (event, d) => {
-  if (!d.decision) return;
+  // A rule set may return null for "no decision" (e.g. an unparseable command).
+  if (!d?.decision) return;
   process.stdout.write(
     JSON.stringify({
       hookSpecificOutput: {

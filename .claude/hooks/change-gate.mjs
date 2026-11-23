@@ -2,20 +2,30 @@
 // PreToolUse change-gate: risky commands and edits.
 //
 // Bash (every segment of the command is checked; the strictest decision wins):
-//   change-gate/git      deny  push to main/master, --force, --mirror; --no-verify; core.hooksPath;
-//                              worktree prune; history rewrite (filter-branch/filter-repo)
-//                        ask   reset --hard, clean -f, restore/checkout -- (discard work), branch -D,
+//   change-gate/git      deny  push to main/master, --force, --mirror; worktree prune;
+//                              history rewrite (filter-branch/filter-repo); reflog expire/delete,
+//                              git prune, gc --prune=now (they remove the way back)
+//                              (skipping the git hooks is githooks-guard's job)
+//                        deny  reset --hard, restore, checkout -- / . / -f, switch -f while tracked files have
+//                              uncommitted changes (lost for good); ask when the tree is clean
+//                        ask   clean -f, reset --merge/--keep, checkout -B, switch -C,
+//                              stash drop/clear, branch -D / -f / -M, tag -d / -f, git rm -r / -f,
 //                              push --force-with-lease / --delete, worktree add/remove (use task:new/clean)
 //   change-gate/gh       deny  pr merge (a person merges); adding a person-only label; secrets; repo delete
 //                        ask   pr close, label create/edit/delete, gh api writes (-X POST/PUT/PATCH/DELETE)
 //   change-gate/deps     deny  npx, npm/pnpm publish   ask  adding or upgrading packages, pnpm dlx
-//   change-gate/rm       deny  recursive force delete of /, ~, .., ., *, .git or outside the repo
+//                        ask   other gh <area> delete (release, run, cache, issue ...)
+//   change-gate/rm       deny  rm -r of /, ~, .., ., ./, *, .git, the repo itself or outside the repo
+//                        ask   rm -r inside the repo (untracked work), except generated folders
+//                              (node_modules, dist, build, coverage ...); targets with $VAR or globs
+//   change-gate/bulk     ask   find -delete / -exec rm, truncate, shred, dd of=, chmod|chown -R, mv out of the repo
+//   change-gate/db       ask   mysql/mariadb SQL with DROP / TRUNCATE / DELETE FROM
 //   change-gate/shell    deny  sudo, su
 //   change-gate/docker   ask   deleting volumes or pruning (DB data)
 //   change-gate/db       deny  migrations with DB_HOST other than localhost / 127.0.0.1 / mysql
 //   change-gate/parse    ask   a command that cannot be parsed safely
 // Edits:
-//   change-gate/high-risk ask  control plane: .github, .claude, .devcontainer, scripts, docker,
+//   change-gate/high-risk ask  control plane: .github, .claude, .devcontainer, .githooks, scripts, docker,
 //                              openspec schema/config, CLAUDE.md, lockfile, package.json, tool configs
 //   change-gate/plan      deny code under apps/ while an OpenSpec change is active and the PR
 //                              lacks plan:approved (ask when the PR cannot be read)
@@ -37,37 +47,48 @@ const currentBranch = (cwd) => {
   }
 };
 
+// Tracked files with uncommitted changes (staged or not) under `paths` (all when
+// empty), relative to the repo root; null when git cannot tell.
+const dirtyTracked = (dir, paths = []) => {
+  try {
+    const out = execFileSync('git', ['status', '--porcelain', '--untracked-files=no', '--', ...paths], {
+      cwd: dir,
+      encoding: 'utf8',
+      timeout: 3000,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    return out.split('\n').filter(Boolean).map((l) => l.slice(3));
+  } catch {
+    return null;
+  }
+};
+
+// Commands that overwrite the working tree: deny while they would throw away
+// uncommitted changes (nothing brings those back), ask when the tree is clean
+// (only refs move, and the reflog brings commits back).
+const discard = (what, dir, paths = []) => {
+  const dirty = dirtyTracked(dir, paths);
+  if (dirty === null) return ask('change-gate/git', `${what} discards uncommitted changes (cannot read git status)`);
+  if (!dirty.length) return ask('change-gate/git', `${what}: no uncommitted changes would be lost, commits stay in the reflog`);
+  const list = dirty.slice(0, 5).join(', ') + (dirty.length > 5 ? ` (+${dirty.length - 5} more)` : '');
+  return deny('change-gate/git', `${what} would throw away uncommitted changes in ${list}; commit them or run git stash first`);
+};
+
 const gitRule = (args, cwd) => {
   const out = [];
   // Global options before the subcommand: -C <dir>, -c <k=v>, --git-dir=...
   let i = 0;
+  let dir = cwd;
   while (i < args.length && args[i].startsWith('-')) {
     const a = args[i];
-    if ((a === '-c' || a === '-C') && i + 1 < args.length) {
-      if (a === '-c' && /^core\.hookspath=/i.test(args[i + 1])) {
-        out.push(deny('change-gate/git', 'overriding core.hooksPath skips the git hooks'));
-      }
-      i += 2;
-    } else {
-      if (/^-c/.test(a) && /core\.hookspath/i.test(a)) out.push(deny('change-gate/git', 'overriding core.hooksPath'));
-      i++;
-    }
+    if (a === '-C' && i + 1 < args.length) dir = absPath(args[i + 1], dir);
+    i += (a === '-c' || a === '-C') && i + 1 < args.length ? 2 : 1;
   }
   const sub = args[i];
   const rest = args.slice(i + 1);
   const has = (...flags) => rest.some((a) => flags.includes(a));
   if (!sub) return out;
 
-  // git accepts unambiguous prefixes: --no-verif, --no-v ...
-  if (rest.some((a) => /^--no-v(e(r(i(f(y)?)?)?)?)?$/.test(a))) {
-    out.push(deny('change-gate/git', '--no-verify skips the git hooks'));
-  }
-  if (sub === 'commit' && rest.some((a) => /^-[a-zA-Z]*n[a-zA-Z]*$/.test(a) && !a.startsWith('--'))) {
-    out.push(deny('change-gate/git', 'commit -n skips the git hooks'));
-  }
-  if (sub === 'config' && rest.some((a) => /^core\.hookspath$/i.test(a))) {
-    out.push(deny('change-gate/git', 'changing core.hooksPath skips the git hooks'));
-  }
   if (sub === 'push') {
     if (rest.some((a) => PROTECTED_BRANCHES.test(a))) out.push(deny('change-gate/git', 'pushing to main; open a PR'));
     // No refspec (or HEAD) pushes the current branch: deny when that is main/master.
@@ -82,12 +103,39 @@ const gitRule = (args, cwd) => {
     }
     if (has('--delete', '-d') || rest.some((a) => /^:[^:]/.test(a))) out.push(ask('change-gate/git', 'deleting a remote branch'));
   }
-  if (sub === 'reset' && has('--hard', '--merge', '--keep')) out.push(ask('change-gate/git', 'reset --hard discards work'));
+  if (sub === 'reset' && has('--hard')) out.push(discard('reset --hard', dir));
+  // --merge / --keep refuse to overwrite local changes; they only move the branch.
+  else if (sub === 'reset' && has('--merge', '--keep')) out.push(ask('change-gate/git', `reset ${rest.find((a) => a.startsWith('--'))} moves the branch`));
   if (sub === 'clean' && rest.some((a) => /^-[a-zA-Z]*f/.test(a) || a === '--force')) out.push(ask('change-gate/git', 'clean -f deletes untracked files'));
-  if (sub === 'restore' && !has('--staged', '-S')) out.push(ask('change-gate/git', 'restore discards working-tree changes'));
-  if (sub === 'checkout' && rest.includes('--')) out.push(ask('change-gate/git', 'checkout -- discards working-tree changes'));
+  // restore --staged alone only unstages; anything touching the worktree discards changes.
+  if (sub === 'restore' && (!has('--staged', '-S') || has('--worktree', '-W'))) {
+    const paths = rest.filter((a, k) => !a.startsWith('-') && !['-s', '--source'].includes(rest[k - 1]));
+    out.push(discard(`restore ${paths.join(' ')}`.trim(), dir, paths));
+  }
+  if (sub === 'checkout') {
+    const dd = rest.indexOf('--');
+    // `git checkout .` / `./x` / `:/` are paths, not branches: they discard changes too.
+    const paths = dd >= 0 ? rest.slice(dd + 1) : rest.filter((a) => a === '.' || a === ':/' || a.startsWith('./'));
+    if (paths.length) out.push(discard(`checkout ${dd >= 0 ? '-- ' : ''}${paths.join(' ')}`, dir, paths));
+    if (has('-f', '--force')) out.push(discard('checkout -f', dir));
+    if (has('-B')) out.push(ask('change-gate/git', 'checkout -B resets an existing branch'));
+  }
+  if (sub === 'switch') {
+    if (has('-f', '--force', '--discard-changes')) out.push(discard(`switch ${rest.find((a) => a.startsWith('-'))}`, dir));
+    if (has('-C', '--force-create')) out.push(ask('change-gate/git', 'switch -C resets an existing branch'));
+  }
+  if (sub === 'stash' && ['drop', 'clear'].includes(rest[0])) out.push(ask('change-gate/git', `stash ${rest[0]} deletes stashed work`));
   if (sub === 'branch' && (has('-D') || (has('--delete', '-d') && has('--force', '-f')))) {
     out.push(ask('change-gate/git', 'branch -D deletes unmerged work'));
+  } else if (sub === 'branch' && has('-f', '--force', '-M', '-C')) {
+    out.push(ask('change-gate/git', 'branch -f / -M moves or overwrites an existing branch'));
+  }
+  if (sub === 'tag' && has('-d', '--delete', '-f', '--force')) out.push(ask('change-gate/git', 'deleting or moving a tag'));
+  if (sub === 'rm' && rest.some((a) => /^-[a-zA-Z]*[rf]/.test(a) || a === '--force')) out.push(ask('change-gate/git', 'git rm -r / -f deletes files from the working tree'));
+  // The recovery paths: reflog entries and unreachable objects.
+  if (sub === 'reflog' && ['expire', 'delete'].includes(rest[0])) out.push(deny('change-gate/git', `reflog ${rest[0]} removes the way back to lost commits`));
+  if (sub === 'prune' || (sub === 'gc' && rest.some((a) => /^--prune=(now|all)$/.test(a)))) {
+    out.push(deny('change-gate/git', 'pruning unreachable objects removes the way back to lost commits'));
   }
   if (sub === 'worktree') {
     if (rest[0] === 'prune') out.push(deny('change-gate/git', 'worktree prune deletes the other side\'s worktrees; use git worktree remove or task:clean'));
@@ -122,6 +170,7 @@ const ghRule = (args) => {
   if (area === 'label' && ['create', 'edit', 'delete', 'clone'].includes(verb)) out.push(ask('change-gate/gh', `gh label ${verb}`));
   if (['secret', 'variable'].includes(area) && verb !== 'list') out.push(deny('change-gate/gh', `gh ${area} ${verb}`));
   if (area === 'repo' && ['delete', 'archive', 'rename', 'edit'].includes(verb)) out.push(deny('change-gate/gh', `gh repo ${verb}`));
+  else if (['delete', 'delete-asset'].includes(verb) && area !== 'label') out.push(ask('change-gate/gh', `gh ${area} ${verb}`));
   if (area === 'ruleset' || (area === 'api' && /rulesets|branches\/[^/]+\/protection/.test(text))) {
     if (args.some((a) => /^(-X|--method)$/.test(a)) || /--method=|-X(POST|PUT|PATCH|DELETE)/i.test(text) || args.includes('--input')) {
       out.push(deny('change-gate/gh', 'changing branch protection / rulesets'));
@@ -157,18 +206,55 @@ const rmRule = (args, cwd, root) => {
   const force = /f/.test(short) || args.includes('--force');
   if (!recursive) return [];
   const targets = args.filter((a) => !a.startsWith('-'));
-  for (const t of targets) {
-    if (['/', '~', '$HOME', '..', '.', '*', '/*', '~/*'].includes(t) || /(^|\/)\.git\/?$/.test(t)) {
-      return [deny('change-gate/rm', `rm -r ${t}`)];
+  const out = [];
+  for (const raw of targets) {
+    // `./`, `../`, `.git/`, `~/` mean the same as without the slash.
+    const t = raw.length > 1 ? raw.replace(/\/+$/, '') : raw;
+    if (['/', '', '~', '$HOME', '..', '.', '*', '/*', '~/*', './*', '.*'].includes(t) || /(^|\/)\.git$/.test(t)) {
+      return [deny('change-gate/rm', `rm -r ${raw}`)];
     }
     // $VAR, $(...), backticks or globs: the real target is unknown until the shell expands it.
-    if (/[$`*?[{]/.test(t)) return [ask('change-gate/rm', `rm -r with an expanded target: ${t}`)];
+    if (/[$`*?[{]/.test(t)) return [ask('change-gate/rm', `rm -r with an expanded target: ${raw}`)];
     const abs = absPath(t.replace(/^~(?=\/|$)/, process.env.HOME ?? '~'), cwd);
-    if (!isInside(abs, root) && !tempDirs().some((d) => isInside(abs, d))) {
-      return [deny('change-gate/rm', `rm -r outside the repo: ${t}`)];
+    if (abs === absPath(root, cwd)) return [deny('change-gate/rm', `rm -r of the repo itself: ${raw}`)];
+    if (!isInside(abs, root)) {
+      if (tempDirs().some((d) => isInside(abs, d))) continue;
+      return [deny('change-gate/rm', `rm -r outside the repo: ${raw}`)];
+    }
+    // Inside the repo: git brings back committed files, not untracked work.
+    // Generated folders are fine to delete.
+    if (!GENERATED.test(basename(abs))) out.push(ask('change-gate/rm', `rm -r ${raw} also deletes untracked work in it`));
+  }
+  if (force && targets.length === 0) out.push(ask('change-gate/rm', 'rm -rf with no visible target'));
+  return out;
+};
+
+// Folders that tools recreate: deleting them loses nothing.
+const GENERATED = /^(node_modules|dist|build|coverage|\.vite|\.cache|\.turbo|\.nyc_output|tmp|temp|\.pnpm-store)$/;
+
+// Other commands that delete or overwrite in bulk.
+const bulkRule = (prog, args, cwd, root, segmentText) => {
+  const out = [];
+  if (prog === 'find' && args.some((a, k) => a === '-delete' || (/^-(exec|execdir|ok|okdir)$/.test(a) && /^(rm|shred|unlink|truncate)$/.test(basename(args[k + 1] ?? ''))))) {
+    out.push(ask('change-gate/bulk', 'find deletes every file it matches'));
+  }
+  if (prog === 'truncate' || prog === 'shred') out.push(ask('change-gate/bulk', `${prog} wipes file contents`));
+  if (prog === 'dd' && args.some((a) => a.startsWith('of='))) out.push(ask('change-gate/bulk', 'dd of= overwrites its target'));
+  if (['chmod', 'chown', 'chgrp'].includes(prog) && args.some((a) => /^-[a-zA-Z]*R/.test(a) || a === '--recursive')) {
+    out.push(ask('change-gate/bulk', `${prog} -R changes a whole tree`));
+  }
+  if (prog === 'mv') {
+    const paths = args.filter((a) => !a.startsWith('-'));
+    const dest = paths.at(-1);
+    if (paths.length >= 2 && !/[$`]/.test(dest) && !isInside(absPath(dest.replace(/^~(?=\/|$)/, process.env.HOME ?? '~'), cwd), root)) {
+      out.push(ask('change-gate/bulk', `mv out of the repo: ${dest}`));
     }
   }
-  return force && targets.length === 0 ? [ask('change-gate/rm', 'rm -rf with no visible target')] : [];
+  // SQL that drops or empties data, through the mysql CLI (directly or via docker exec).
+  if (/\b(mysql|mariadb|mysqladmin)\b/.test(segmentText) && /\b(drop|truncate)\s+(database|schema|table)\b|\bdelete\s+from\b|\bmysqladmin\b.*\bdrop\b/i.test(segmentText)) {
+    out.push(ask('change-gate/db', 'SQL that drops or deletes data'));
+  }
+  return out;
 };
 
 const dockerRule = (args) => {
@@ -195,6 +281,7 @@ const bashDecisions = (cmd, cwd, root) => {
     if (prog === 'gh') out.push(...ghRule(args));
     if (prog === 'rm') out.push(...rmRule(args, cwd, root));
     if (prog === 'docker') out.push(...dockerRule(args));
+    out.push(...bulkRule(prog, args, cwd, root, words.join(' ')));
     out.push(...depsRule(prog, args));
   }
   return out;
@@ -205,6 +292,7 @@ const HIGH_RISK = [
   /^\.github\//,
   /^\.claude\/(?!(LESSONS|METRICS|BACKLOG)\.md$)/,
   /^\.devcontainer\//,
+  /^\.githooks\//,
   /^scripts\//,
   /^docker\//,
   /^docker-compose\.yml$/,

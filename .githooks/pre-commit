@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# L5c pre-commit: a fast local check (< 30 s) before a commit exists.
+#   1. gitleaks on the staged changes. Required: without gitleaks there is no commit.
+#   2. Prettier --check and ESLint (--max-warnings 0) on staged files of apps/api and apps/web.
+# It never fixes anything: fix the file, stage it again, commit again.
+# CI (`ci`) still runs everything; this only catches it earlier.
+# Enabled by `pnpm install` (root `prepare`: git config core.hooksPath .githooks).
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+start=$SECONDS
+fail=0
+
+# 1. Secrets
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "pre-commit: gitleaks is missing, so the commit is blocked." >&2
+  echo "  macOS: brew install gitleaks   Dev Container: rebuild it (post-create.sh installs it)" >&2
+  exit 1
+fi
+if ! gitleaks git --pre-commit --staged --redact --verbose --no-banner; then
+  echo "pre-commit: gitleaks found a secret in the staged changes (values redacted above)." >&2
+  fail=1
+fi
+
+# 2. Formatting and lint, per app, on staged files that still exist.
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+unstaged=$(git diff --name-only)
+for app in api web; do
+  files=$(grep -E "^apps/$app/" <<<"$staged" || true)
+  [ -z "$files" ] && continue
+  if [ ! -d "apps/$app/node_modules" ]; then
+    echo "pre-commit: apps/$app/node_modules is missing; run pnpm install." >&2
+    fail=1
+    continue
+  fi
+  # Same scope as `pnpm lint`: api lints src/ and test/ *.ts, web lints *.ts and *.tsx.
+  if [ "$app" = api ]; then
+    lint=$(grep -E '^apps/api/(src|test)/.+\.ts$' <<<"$files" || true)
+  else
+    lint=$(grep -E '\.tsx?$' <<<"$files" || true)
+  fi
+  partial=$(grep -Fx -f <(printf '%s\n' "$unstaged") <<<"$files" || true)
+  if [ -n "$partial" ]; then
+    echo "pre-commit: these files also have unstaged changes; the working copy was checked:" >&2
+    sed 's/^/  /' <<<"$partial" >&2
+  fi
+
+  rel=()
+  while IFS= read -r f; do rel+=("${f#apps/$app/}"); done <<<"$files"
+  if ! (cd "apps/$app" && pnpm exec prettier --check --ignore-unknown --log-level warn "${rel[@]}"); then
+    echo "pre-commit: Prettier: format the files above (pnpm --filter $app format), then stage them again." >&2
+    fail=1
+  fi
+  if [ -n "$lint" ]; then
+    rel=()
+    while IFS= read -r f; do rel+=("${f#apps/$app/}"); done <<<"$lint"
+    if ! (cd "apps/$app" && pnpm exec eslint --max-warnings 0 --no-warn-ignored "${rel[@]}"); then
+      echo "pre-commit: ESLint found problems in apps/$app." >&2
+      fail=1
+    fi
+  fi
+done
+
+took=$((SECONDS - start))
+if [ "$fail" -ne 0 ]; then
+  echo "pre-commit: commit blocked (${took}s). Never skip it with --no-verify." >&2
+  exit 1
+fi
+echo "pre-commit: OK (${took}s)"

@@ -27,6 +27,11 @@
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/change-gate.mjs\"",
             "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/githooks-guard.mjs\"",
+            "timeout": 10
           }
         ]
       }

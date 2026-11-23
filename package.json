@@ -3,6 +3,7 @@
   "private": true,
   "packageManager": "pnpm@10.24.0",
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks || true",
     "db:up": "docker compose up -d mysql",
     "db:down": "docker compose down",
     "dc:shell": "docker exec -it -u node -w /workspaces/ai-driven-development ai-driven-development-workspace-1 bash",

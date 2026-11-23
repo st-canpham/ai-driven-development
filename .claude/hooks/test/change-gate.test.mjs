@@ -2,6 +2,7 @@ import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
 import { bash, fixtureRepo, run, runRaw, REPO } from './harness.mjs';
 
 const H = 'change-gate.mjs';
@@ -30,13 +31,7 @@ describe('change-gate: git', () => {
     ['git push --force-with-lease', 'ask'],
     ['git push origin --delete feat/x', 'ask'],
     ['git push -u origin feat/room-management', null],
-    ['git commit --no-verify -m x', 'deny'],
-    ['git commit --no-veri -m x', 'deny'],
-    ['git commit -nm "x"', 'deny'],
-    ['git commit -m "no-verify in a message is fine"', null],
-    ['git -c core.hooksPath=/dev/null commit -m x', 'deny'],
-    ['git config core.hooksPath .githooks', 'deny'],
-    ['git config --local core.hooksPath x', 'deny'],
+    ['git commit --no-verify -m x', null], // githooks-guard's job
     ['git reset --hard origin/main', 'ask'],
     ['git reset --soft HEAD~1', null],
     ['git clean -fd', 'ask'],
@@ -51,7 +46,6 @@ describe('change-gate: git', () => {
     ['git worktree list', null],
     ['git filter-repo --path x', 'deny'],
     ['git status && git push origin main', 'deny'],
-    ['FOO=1 timeout 5 git push --no-verify', 'deny'],
     ['bash -c "git worktree prune"', 'deny'],
     ['eval git reset --hard', 'ask'],
     ['echo "$(git push -f)"', 'deny'],
@@ -134,7 +128,7 @@ describe('change-gate: edits', () => {
   const edit = (path, env, root = REPO) =>
     run(H, 'Edit', { file_path: join(root, path), old_string: 'a', new_string: 'b' }, { CLAUDE_PROJECT_DIR: root, ...env }, root);
 
-  for (const p of ['.github/workflows/ci.yml', '.claude/settings.json', '.claude/hooks/lib.mjs', 'scripts/plan-gate.sh', 'CLAUDE.md', 'apps/web/CLAUDE.md', 'package.json', 'apps/api/package.json', 'pnpm-lock.yaml', 'openspec/config.yaml', 'apps/web/eslint.config.mjs', 'apps/api/tsconfig.json']) {
+  for (const p of ['.github/workflows/ci.yml', '.githooks/pre-commit', '.claude/settings.json', '.claude/hooks/lib.mjs', 'scripts/plan-gate.sh', 'CLAUDE.md', 'apps/web/CLAUDE.md', 'package.json', 'apps/api/package.json', 'pnpm-lock.yaml', 'openspec/config.yaml', 'apps/web/eslint.config.mjs', 'apps/api/tsconfig.json']) {
     it(`high-risk ${p} -> ask`, () => assert.equal(edit(p, { HOOK_PR_LABELS: '' }).decision, 'ask'));
   }
   for (const p of ['.claude/LESSONS.md', '.claude/METRICS.md', 'README.md', 'openspec/changes/add-x/design.md']) {
@@ -174,6 +168,141 @@ describe('change-gate: push of the current branch', () => {
   it('git push on a feature branch -> no decision', () => assert.equal(push('git push', repoOn('feat/x')), null));
   it('git push origin HEAD on a feature branch -> no decision', () => assert.equal(push('git push origin HEAD', repoOn('feat/x')), null));
   it('git push --force-with-lease on main -> deny', () => assert.equal(push('git push --force-with-lease', repoOn('main')), 'deny'));
+});
+
+describe('change-gate: destructive commands', () => {
+  const feature = repoOn('feat/x');
+  const cases = [
+    // rm -r: trailing slashes, the repo itself, inside the repo
+    ['rm -rf ./', 'deny'],
+    ['rm -rf ../', 'deny'],
+    ['rm -rf .git/', 'deny'],
+    ['rm -rf ./*', 'deny'],
+    [`rm -rf ${feature}`, 'deny'],
+    ['rm -rf apps', 'ask'],
+    ['rm -rf apps/api/src', 'ask'],
+    ['rm --recursive --force apps', 'ask'],
+    ['rm -rf node_modules', null],
+    ['rm -rf apps/web/dist apps/api/coverage', null],
+    ['rm -f apps/x.ts', null],
+    // git: discarding changes, stashes, branches, tags
+    ['git checkout .', 'ask'],
+    ['git checkout ./apps', 'ask'],
+    ['git checkout :/', 'ask'],
+    ['git checkout -f main', 'ask'],
+    ['git checkout -B main', 'ask'],
+    ['git checkout -b feat/y', null],
+    ['git checkout main', null],
+    ['git switch -f main', 'ask'],
+    ['git switch --discard-changes main', 'ask'],
+    ['git switch -C main', 'ask'],
+    ['git switch -c feat/y', null],
+    ['git stash drop', 'ask'],
+    ['git stash clear', 'ask'],
+    ['git stash pop', null],
+    ['git stash', null],
+    ['git branch -f main HEAD~3', 'ask'],
+    ['git branch -M feat/z', 'ask'],
+    ['git branch feat/y', null],
+    ['git tag -d v1', 'ask'],
+    ['git tag -f v1', 'ask'],
+    ['git tag v1', null],
+    ['git rm -r apps', 'ask'],
+    ['git rm -f apps/x.ts', 'ask'],
+    ['git rm apps/x.ts', null],
+    ['git rm --cached apps/x.ts', null],
+    // the way back to lost commits
+    ['git reflog expire --expire=now --all', 'deny'],
+    ['git reflog delete HEAD@{1}', 'deny'],
+    ['git gc --prune=now', 'deny'],
+    ['git prune', 'deny'],
+    ['git reflog', null],
+    ['git gc', null],
+    // bulk deletes and overwrites
+    ['find . -delete', 'ask'],
+    ["find . -name '*.ts' -exec rm {} +", 'ask'],
+    ['find . -name x -print', null],
+    ['truncate -s 0 apps/api/src/main.ts', 'ask'],
+    ['shred apps/x.ts', 'ask'],
+    ['dd if=/dev/zero of=x bs=1 count=1', 'ask'],
+    ['chmod -R 000 apps', 'ask'],
+    ['chown -R nobody apps', 'ask'],
+    ['chmod +x x.sh', null],
+    ['mv apps /tmp/', 'ask'],
+    ['mv apps ~/Desktop/', 'ask'],
+    ['mv a.ts b.ts', null],
+    // SQL
+    ["mysql -e 'DROP DATABASE x'", 'ask'],
+    ["mysql -e 'truncate table rooms'", 'ask'],
+    ['docker exec m mysql -e "delete from rooms"', 'ask'],
+    ['mysqladmin drop x', 'ask'],
+    ["mysql -e 'select 1'", null],
+    // gh deletes
+    ['gh release delete v1', 'ask'],
+    ['gh run delete 1', 'ask'],
+    ['gh cache delete --all', 'ask'],
+    ['gh repo delete o/r', 'deny'],
+    ['gh release list', null],
+  ];
+  for (const [cmd, want] of cases) {
+    it(`${cmd} -> ${want ?? 'no decision'}`, () => assert.equal(bashIn(feature, cmd), want));
+  }
+});
+
+describe('change-gate: discarding uncommitted changes', () => {
+  // feat/x with two tracked files; `dirty` edits one of them (and stages another).
+  const repoWithFiles = ({ modify = [], stage = [], untracked = [] } = {}) => {
+    const dir = repoOn('feat/x');
+    const g = (...a) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'core.hooksPath=/dev/null', ...a], { cwd: dir, stdio: 'ignore' });
+    writeFileSync(join(dir, 'apps/api/src/a.ts'), 'a\n');
+    writeFileSync(join(dir, 'README.md'), 'r\n');
+    g('add', '-A');
+    g('commit', '-qm', 'files');
+    for (const f of [...modify, ...stage]) writeFileSync(join(dir, f), 'changed\n');
+    if (stage.length) g('add', ...stage);
+    for (const f of untracked) writeFileSync(join(dir, f), 'new\n');
+    return dir;
+  };
+  const clean = repoWithFiles({ untracked: ['notes.txt'] });
+  const dirty = repoWithFiles({ modify: ['apps/api/src/a.ts'] });
+  const staged = repoWithFiles({ stage: ['README.md'] });
+  const cases = [
+    // [command, clean tree, modified file, staged file]
+    ['git reset --hard', 'ask', 'deny', 'deny'],
+    ['git reset --hard HEAD~1', 'ask', 'deny', 'deny'],
+    ['git checkout .', 'ask', 'deny', 'deny'],
+    ['git checkout -- apps', 'ask', 'deny', 'ask'],
+    ['git checkout -- README.md', 'ask', 'ask', 'deny'],
+    ['git checkout -f main', 'ask', 'deny', 'deny'],
+    ['git switch -f main', 'ask', 'deny', 'deny'],
+    ['git switch --discard-changes main', 'ask', 'deny', 'deny'],
+    ['git restore .', 'ask', 'deny', 'deny'],
+    ['git restore apps/api/src/a.ts', 'ask', 'deny', 'ask'],
+    ['git restore --source=HEAD~1 README.md', 'ask', 'ask', 'deny'],
+    ['git restore --staged --worktree README.md', 'ask', 'ask', 'deny'],
+    ['git restore --staged README.md', null, null, null],
+    ['git reset --keep HEAD~1', 'ask', 'ask', 'ask'],
+    ['git switch -C feat/x', 'ask', 'ask', 'ask'],
+    ['git stash drop', 'ask', 'ask', 'ask'],
+    ['git checkout main', null, null, null],
+  ];
+  for (const [cmd, ...want] of cases) {
+    it(`${cmd} -> clean ${want[0] ?? '-'}, modified ${want[1] ?? '-'}, staged ${want[2] ?? '-'}`, () => {
+      assert.deepEqual([bashIn(clean, cmd), bashIn(dirty, cmd), bashIn(staged, cmd)], want);
+    });
+  }
+  it('the denial names the files and the way out', () => {
+    const r = run(H, 'Bash', { command: 'git reset --hard' }, { CLAUDE_PROJECT_DIR: dirty }, dirty);
+    assert.match(r.reason, /apps\/api\/src\/a\.ts/);
+    assert.match(r.reason, /git stash/);
+  });
+  it('git -C <dir> reads the status of that dir', () => {
+    assert.equal(bashIn(clean, `git -C ${dirty} reset --hard`), 'deny');
+    assert.equal(bashIn(dirty, `git -C ${clean} reset --hard`), 'ask');
+  });
+  it('untracked files do not count (git reset --hard keeps them)', () => {
+    assert.equal(bashIn(clean, 'git reset --hard'), 'ask');
+  });
 });
 
 describe('change-gate: fail closed', () => {
