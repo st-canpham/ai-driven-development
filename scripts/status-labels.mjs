@@ -3,13 +3,17 @@
 // automated in L5). Run by .github/workflows/status-labels.yml from the base branch.
 //
 //   PR closed, not merged             -> status:cancelled
-//   PR marked ready for review        -> status:code-review (unless status:done)
-//   PR converted back to draft        -> status:in-progress (unless status:done)
-//   new commits while changes-requested -> status:in-progress
-//   opened / pushed, no status yet:
-//     draft with code beyond openspec/ (the first code commit) -> status:in-progress
-//     not a draft                                             -> status:code-review
-//   status:done is never moved except by closing unmerged; plan:* labels are never touched.
+//   status:done present               -> stays (other status labels are removed); only an
+//                                        unmerged close moves it
+//   PR marked ready for review        -> status:code-review
+//   PR converted back to draft        -> status:in-progress
+//   new commits while changes-requested -> status:in-progress (otherwise changes-requested stays)
+//   opened / reopened / pushed, no status yet (a reopened status:cancelled counts as none):
+//     not a draft                                                  -> status:code-review
+//     draft with plan:approved or plan:tier-0 and code beyond openspec/ -> status:in-progress
+//     reopened draft that was cancelled                            -> status:in-progress
+//   several status labels otherwise   -> the most advanced one
+//   plan:* labels are never touched.
 //
 // Labels are read live from GitHub (`gh pr view`), never from the event payload.
 //   node scripts/status-labels.mjs                 in Actions (GITHUB_EVENT_PATH, GH_TOKEN)
@@ -20,24 +24,35 @@ import { pathToFileURL } from 'node:url';
 
 export const STATUS = ['status:in-progress', 'status:code-review', 'status:changes-requested', 'status:done', 'status:cancelled'];
 
+// How far along each status is; with several labels the most advanced one wins.
+const RANK = { 'status:cancelled': 0, 'status:in-progress': 1, 'status:code-review': 2, 'status:changes-requested': 3, 'status:done': 4 };
+
 const hasCode = (changed) => changed.some((f) => f && !f.startsWith('openspec/'));
 
 // Returns the status label the PR should have, or null to leave it as it is.
 export const decide = ({ action, draft, merged, labels, changed = [] }) => {
-  const current = labels.filter((l) => STATUS.includes(l));
-  const is = (l) => current.length === 1 && current[0] === l;
+  const all = labels.filter((l) => STATUS.includes(l));
   if (action === 'closed') return merged ? null : 'status:cancelled';
-  if (is('status:done')) return null;
+  // status:done and status:changes-requested are a person's labels: never undone here.
+  if (all.includes('status:done')) return all.length > 1 ? 'status:done' : null;
+  const reopenedCancelled = action === 'reopened' && all.includes('status:cancelled');
+  const current = reopenedCancelled ? all.filter((l) => l !== 'status:cancelled') : all;
   if (action === 'ready_for_review') return 'status:code-review';
   if (action === 'converted_to_draft') return 'status:in-progress';
-  if (action === 'synchronize' && is('status:changes-requested')) return 'status:in-progress';
-  if (['opened', 'reopened', 'synchronize'].includes(action) && current.length === 0) {
-    if (!draft) return 'status:code-review';
-    if (hasCode(changed)) return 'status:in-progress';
+  if (current.includes('status:changes-requested')) {
+    if (action === 'synchronize') return 'status:in-progress';
+    return current.length > 1 ? 'status:changes-requested' : null;
   }
-  // More than one status label: settle on the most advanced one that is not done.
-  if (current.length > 1) return STATUS.find((s) => current.includes(s) && s !== 'status:done') ?? null;
-  return null;
+  if (current.length === 0) {
+    if (!['opened', 'reopened', 'synchronize'].includes(action)) return null;
+    if (!draft) return 'status:code-review';
+    const planned = labels.includes('plan:approved') || labels.includes('plan:tier-0');
+    if ((planned && hasCode(changed)) || reopenedCancelled) return 'status:in-progress';
+    return null;
+  }
+  if (current.length > 1) return current.reduce((a, b) => (RANK[b] > RANK[a] ? b : a));
+  // Reopened with cancelled next to another status: keep that one, drop cancelled.
+  return reopenedCancelled ? current[0] : null;
 };
 
 // Labels to remove and to add so that exactly `target` remains.

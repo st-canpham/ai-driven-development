@@ -37,11 +37,11 @@ const commit = (r, files, msg = 'change') => {
   return r.git('rev-parse', 'HEAD');
 };
 
-const gate = (r, { labels = 'plan:tier-0,status:done', body = BODY, comments = '' } = {}) => {
-  const res = spawnSync('bash', [SCRIPT, r.baseSha], {
+const gate = (r, { labels = 'plan:tier-0,status:done', body = BODY, comments = '', base = r.baseSha, env = {} } = {}) => {
+  const res = spawnSync('bash', [SCRIPT, base], {
     cwd: r.dir,
     encoding: 'utf8',
-    env: { ...process.env, PR: '1', PLAN_GATE_LABELS: labels, PLAN_GATE_BODY: body, PLAN_GATE_COMMENTS: comments, GITHUB_STEP_SUMMARY: '' },
+    env: { ...process.env, PR: '1', PR_HEAD_SHA: '', PLAN_GATE_LABELS: labels, PLAN_GATE_BODY: body, PLAN_GATE_COMMENTS: comments, GITHUB_STEP_SUMMARY: '', ...env },
   });
   return { status: res.status, out: res.stdout + res.stderr };
 };
@@ -97,6 +97,35 @@ describe('plan-gate.sh', () => {
       const r = repo();
       commit(r, { 'apps/api/src/a.ts': 'changed\n' });
       assert.match(gate(r, { comments: '<!-- review: clean 0123456789abcdef -->' }).out, /FAIL +code under apps\//);
+    });
+
+    // CI checks out GitHub's merge of the PR into the current base. main may have gained
+    // apps/ changes from other PRs since the review; they must not void the marker.
+    const mergeRef = () => {
+      const r = repo();
+      const reviewed = commit(r, { 'apps/api/src/b.ts': 'b\n' });
+      r.git('switch', '-q', 'main');
+      const newBase = commit(r, { 'apps/api/src/a.ts': 'changed on main by another PR\n' }, 'feat: other PR');
+      r.git('switch', '-q', '--detach', newBase);
+      r.git('-c', 'user.name=t', '-c', 'user.email=t@t', 'merge', '-q', '--no-ff', '-m', 'merge', reviewed);
+      return { r, reviewed, newBase };
+    };
+    it('merge ref, main moved after the review -> OK (compares the PR head, HEAD^2)', () => {
+      const { r, reviewed, newBase } = mergeRef();
+      const g = gate(r, { base: newBase, comments: `<!-- review: clean ${reviewed} -->` });
+      assert.equal(g.status, 0, g.out);
+      assert.match(g.out, /OK +apps\/ reviewed/);
+    });
+    it('merge ref with PR_HEAD_SHA set -> OK', () => {
+      const { r, reviewed, newBase } = mergeRef();
+      const g = gate(r, { base: newBase, comments: `<!-- review: clean ${reviewed} -->`, env: { PR_HEAD_SHA: reviewed } });
+      assert.match(g.out, /OK +apps\/ reviewed/);
+    });
+    it('merge ref, PR head changed apps/ after the review -> FAIL', () => {
+      const r = repo();
+      const reviewed = commit(r, { 'apps/api/src/b.ts': 'b\n' });
+      const head = commit(r, { 'apps/api/src/b.ts': 'b2\n' });
+      assert.match(gate(r, { comments: `<!-- review: clean ${reviewed} -->`, env: { PR_HEAD_SHA: head } }).out, /FAIL +code under apps\//);
     });
 
     it('no apps/ change -> not checked', () => {

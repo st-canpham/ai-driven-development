@@ -205,10 +205,13 @@ posts a PR comment `<!-- review: clean <HEAD sha> -->`. If pass 3 still has an o
 as **blocked**: three passes without converging means a person decides. The last
 disposition table goes under *Deviations from plan*.
 
-The marker is what CI checks: `plan-gate` fails while the code under `apps/` at HEAD
-differs from every commit with a clean-review marker. The archive commit (only
+The marker is what CI checks: `plan-gate` fails while the code under `apps/` at the PR's
+head differs from every commit with a clean-review marker. Only comments from people with
+write access count. Changes merged to `main` by other PRs do not invalidate it (the
+check compares the PR head, not GitHub's merge commit). The archive commit (only
 `openspec/`) keeps the marker valid; a fix after `status:changes-requested` needs a new
-review and a new marker.
+review and a new marker, and so does a rebase or force-push of the branch (the reviewed
+commit disappears), so merge `origin/main` instead of rebasing after a review.
 
 ## The advisor
 
