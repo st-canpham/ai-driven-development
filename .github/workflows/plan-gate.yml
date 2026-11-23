@@ -24,19 +24,23 @@ jobs:
           fetch-depth: 0
 
       # The gate's own scripts come from the base branch, so a PR cannot loosen
-      # the check that judges it. Bootstrap: fall back to the PR's copy once.
+      # the check that judges it. They are taken as one set: plan-gate.sh calls
+      # check-plan.sh, and mixing versions breaks. Bootstrap (no plan-gate.sh on
+      # the base yet): take the whole set from the PR once.
       - name: Gate scripts from base
         env:
           BASE: origin/${{ github.event.pull_request.base.ref }}
         run: |
           mkdir -p "$RUNNER_TEMP/gate"
+          if git cat-file -e "$BASE:scripts/plan-gate.sh" 2>/dev/null; then
+            src="$BASE"
+          else
+            src=HEAD
+            echo "::warning::scripts/plan-gate.sh is not on $BASE yet; using the PR's gate scripts (bootstrap)."
+          fi
           for f in plan-gate.sh check-plan.sh; do
-            if git show "$BASE:scripts/$f" > "$RUNNER_TEMP/gate/$f" 2>/dev/null; then
-              echo "scripts/$f from $BASE"
-            else
-              echo "::warning::scripts/$f is not on $BASE yet; using the PR's copy (bootstrap)."
-              cp "scripts/$f" "$RUNNER_TEMP/gate/$f"
-            fi
+            git show "$src:scripts/$f" > "$RUNNER_TEMP/gate/$f"
+            echo "scripts/$f from $src"
           done
 
       - uses: pnpm/action-setup@v4
