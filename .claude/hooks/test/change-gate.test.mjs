@@ -134,7 +134,7 @@ describe('change-gate: edits', () => {
   const edit = (path, env, root = REPO) =>
     run(H, 'Edit', { file_path: join(root, path), old_string: 'a', new_string: 'b' }, { CLAUDE_PROJECT_DIR: root, ...env }, root);
 
-  for (const p of ['.github/workflows/ci.yml', '.claude/settings.json', '.claude/hooks/lib.mjs', 'scripts/plan-gate.sh', 'CLAUDE.md', 'apps/web/CLAUDE.md', 'package.json', 'apps/api/package.json', 'pnpm-lock.yaml', 'openspec/config.yaml', 'apps/web/eslint.config.mjs', 'apps/api/tsconfig.json']) {
+  for (const p of ['.github/workflows/ci.yml', '.githooks/pre-commit', '.claude/settings.json', '.claude/hooks/lib.mjs', 'scripts/plan-gate.sh', 'CLAUDE.md', 'apps/web/CLAUDE.md', 'package.json', 'apps/api/package.json', 'pnpm-lock.yaml', 'openspec/config.yaml', 'apps/web/eslint.config.mjs', 'apps/api/tsconfig.json']) {
     it(`high-risk ${p} -> ask`, () => assert.equal(edit(p, { HOOK_PR_LABELS: '' }).decision, 'ask'));
   }
   for (const p of ['.claude/LESSONS.md', '.claude/METRICS.md', 'README.md', 'openspec/changes/add-x/design.md']) {

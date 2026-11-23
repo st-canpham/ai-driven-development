@@ -15,7 +15,7 @@
 //   change-gate/db       deny  migrations with DB_HOST other than localhost / 127.0.0.1 / mysql
 //   change-gate/parse    ask   a command that cannot be parsed safely
 // Edits:
-//   change-gate/high-risk ask  control plane: .github, .claude, .devcontainer, scripts, docker,
+//   change-gate/high-risk ask  control plane: .github, .claude, .devcontainer, .githooks, scripts, docker,
 //                              openspec schema/config, CLAUDE.md, lockfile, package.json, tool configs
 //   change-gate/plan      deny code under apps/ while an OpenSpec change is active and the PR
 //                              lacks plan:approved (ask when the PR cannot be read)
@@ -205,6 +205,7 @@ const HIGH_RISK = [
   /^\.github\//,
   /^\.claude\/(?!(LESSONS|METRICS|BACKLOG)\.md$)/,
   /^\.devcontainer\//,
+  /^\.githooks\//,
   /^scripts\//,
   /^docker\//,
   /^docker-compose\.yml$/,

@@ -17,6 +17,7 @@ NestJS + React + MySQL project used to practise the AI-Driven Development playbo
 | VS Code + **Dev Containers** extension | Option A |
 | Dev Container CLI: `pnpm add -g @devcontainers/cli` | Option B |
 | Node 24 + pnpm (`corepack enable`) | Option C |
+| gitleaks 8.30.1 (`brew install gitleaks`; the Dev Container installs it) | Committing on the host: the pre-commit hook blocks without it |
 
 ### 2. Clone the repo
 
@@ -94,14 +95,18 @@ pnpm dev:web   # http://localhost:5173
 
 The agent pushes and opens draft PRs from the container with a fine-grained token for this repository only. Create it and log in once per machine: [.devcontainer/github-auth.md](.devcontainer/github-auth.md).
 
-### 6. Check that everything works
+### 6. Git pre-commit hook
+
+`pnpm install` turns on `.githooks/pre-commit` (`core.hooksPath`) for the repo and every worktree. Before each commit it runs gitleaks on the staged changes, and Prettier `--check` + ESLint on staged files of `apps/api` and `apps/web` (a few seconds; it never fixes files). Without gitleaks the commit is blocked. Never skip it with `--no-verify`.
+
+### 7. Check that everything works
 
 ```bash
 pnpm build && pnpm lint && pnpm test
 pnpm --filter api test:e2e   # needs MySQL running
 ```
 
-### 7. Use Claude Code
+### 8. Use Claude Code
 
 Run `claude` in the repo — inside the container for options A and B. From a host terminal you can also open a running container directly:
 
