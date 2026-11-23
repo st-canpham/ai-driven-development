@@ -28,9 +28,10 @@ Domain: book meeting rooms. Users book rooms; admins manage rooms.
 - Feature work goes through OpenSpec (see Plan-first). Living specs in `openspec/specs/`, in-flight changes in `openspec/changes/`, project schema in `openspec/schemas/room-booking/`.
 
 ## Plan-first (L3)
-- **Tier 0 — no plan:** the diff fits in one sentence and changes no behavior and no interface (typo, rename, copy, internal refactor). File count does not decide it: a one-file change to a status code or a rule needs a plan.
+- **Every PR declares its plan with a label**: `plan:approved` for an OpenSpec change, otherwise `plan:tier-0` with its reason (docs-only PRs included).
+- **Tier 0 — no plan:** the diff fits in one sentence and changes no behavior and no interface (typo, rename, copy, internal refactor, config, tooling, CI, hooks, Dev Container, docs). File count does not decide it: a one-file change to a status code or a rule needs a plan.
   - Never Tier 0: controllers, DTOs, entities, migrations, web `*.routes.ts`, `src/config/endpoint.ts`.
-  - When the change cannot affect any spec (config, tooling, docs, internal refactor), you may add `plan:tier-0` yourself and must write "Tier 0: <reason>" in the PR body and in a PR comment. The reviewer removes the label if they disagree, and then the OpenSpec flow applies.
+  - When the change cannot affect any spec, you add `plan:tier-0` yourself and must write "Tier 0: <reason>" in the PR body and in a PR comment. The reviewer removes the label if they disagree, and then the OpenSpec flow applies.
   - `status:` labels apply as below (`code-review` → `done`); there is nothing to archive.
 - **Everything else needs an approved OpenSpec change before any code:**
   1. `/opsx:explore` (read-only discussion), then `/opsx:propose` — writes only `openspec/changes/<id>/`. `design.md` is the plan: files, interfaces, Mermaid diagrams, how to verify.
@@ -58,7 +59,7 @@ Two independent groups on every PR: the **plan gate** (`plan:approved` stays unt
 | `status:cancelled` | closed without merging | **person** |
 
 Keep exactly one `status:` label: remove the old one when you add the next. Never add a label marked **person**.
-- `bash scripts/check-plan.sh [base]` checks a branch: any changed code under `apps/` (tests and docs excluded) needs an OpenSpec change with `plan:approved`, or `plan:tier-0`; interface files always need the OpenSpec change.
+- `bash scripts/check-plan.sh [base]` checks a branch: every change needs an OpenSpec change with `plan:approved`, or `plan:tier-0`; interface files always need the OpenSpec change. Tests: `node --test scripts/test/*.test.mjs`.
 - Log each PR in `.claude/METRICS.md` (plan attached? second design round?). Work deferred to later levels lives in `.claude/BACKLOG.md`.
 
 ### Naming (kebab-case everywhere)
@@ -93,6 +94,11 @@ Keep exactly one `status:` label: remove the old one when you add the next. Neve
   - **`plan-gate`**: `check-plan.sh`; no un-archived OpenSpec change; `openspec validate --specs`; `plan:tier-0` has a "Tier 0: <reason>" line; exactly one `status:` label and it is `status:done`; the PR body keeps the template's *Plan* and *Deviations from plan* headings.
 - `plan-gate` runs its scripts from the base branch, so a PR cannot loosen the gate that judges it.
 - Never make a check pass by silencing it: fix the code or the test. Lint/type/test config changes are flagged for the reviewer.
+- **Agent hooks** (`.claude/settings.json` → `.claude/hooks/*.mjs`) run before and after your tool calls. They only return *ask* or *deny*, and block when they cannot read their input:
+  - `access-guard`: denies `.env*` files, keys and credential stores, `gh auth token`; asks before touching files outside the repo.
+  - `change-gate`: denies push to main, force push, `--no-verify`, `core.hooksPath`, `git worktree prune`, `gh pr merge`, adding a person-only label, `npx`, `sudo`, `rm -r` of /, ~, .git or paths outside the repo, migrations against a non-local DB; asks for `reset --hard`, discarding work, adding packages, deleting Docker volumes and edits to the control plane (`.github`, `.claude`, `scripts`, `.devcontainer`, OpenSpec schema/config, CLAUDE.md, package.json, lockfile, tool configs). Code under `apps/` is denied while an OpenSpec change is active and the PR lacks `plan:approved`.
+  - `check-edit` (after an edit in `apps/*/src|test`): formats the file with Prettier, then ESLint on it plus its related test; fix what it reports. The file on disk may differ from what you wrote (formatting only): re-read it before the next edit.
+  - A denial is a rule, not an obstacle: do not look for another command that does the same thing. If it is wrong, say so and let a person decide. Hook tests: `node --test .claude/hooks/test/*.test.mjs` (also in CI).
 - Reproduce locally before pushing: `bash scripts/check-suppressions.sh`, `pnpm lint && pnpm typecheck`, `pnpm test:cov && node scripts/check-coverage.mjs`, `bash scripts/check-plan.sh`.
 
 ## Sessions and rules
