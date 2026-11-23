@@ -1,0 +1,44 @@
+# L3 status labels, automated (L5): keeps the single status: label in step with the PR.
+# The script comes from the base branch, like plan-gate's, so a PR cannot change what
+# runs with this token. Fork PRs are skipped (their token is read-only anyway).
+# Labels set with GITHUB_TOKEN do not start other workflows; plan-gate re-runs on the
+# person's status:done label, which is the one it waits for.
+name: status-labels
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft, closed]
+
+concurrency:
+  group: status-labels-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  status-labels:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Script from base
+        env:
+          BASE: origin/${{ github.event.pull_request.base.ref }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/gate"
+          if git cat-file -e "$BASE:scripts/status-labels.mjs" 2>/dev/null; then src="$BASE"; else src=HEAD; echo "::warning::scripts/status-labels.mjs is not on $BASE yet; using the PR's (bootstrap)."; fi
+          git show "$src:scripts/status-labels.mjs" > "$RUNNER_TEMP/gate/status-labels.mjs"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Set the status label
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node "$RUNNER_TEMP/gate/status-labels.mjs"
