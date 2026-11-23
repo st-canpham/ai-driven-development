@@ -92,6 +92,11 @@ Keep exactly one `status:` label: remove the old one when you add the next. Neve
   - **`plan-gate`**: `check-plan.sh`; no un-archived OpenSpec change; `openspec validate --specs`; `plan:tier-0` has a "Tier 0: <reason>" line; exactly one `status:` label and it is `status:done`; the PR body keeps the template's *Plan* and *Deviations from plan* headings.
 - `plan-gate` runs its scripts from the base branch, so a PR cannot loosen the gate that judges it.
 - Never make a check pass by silencing it: fix the code or the test. Lint/type/test config changes are flagged for the reviewer.
+- **Agent hooks** (`.claude/settings.json` → `.claude/hooks/*.mjs`) run before and after your tool calls. They only return *ask* or *deny*, and block when they cannot read their input:
+  - `access-guard`: denies `.env*` files, keys and credential stores, `gh auth token`; asks before touching files outside the repo.
+  - `change-gate`: denies push to main, force push, `--no-verify`, `core.hooksPath`, `git worktree prune`, `gh pr merge`, adding a person-only label, `npx`, `sudo`, `rm -r` of /, ~, .git or paths outside the repo, migrations against a non-local DB; asks for `reset --hard`, discarding work, adding packages, deleting Docker volumes and edits to the control plane (`.github`, `.claude`, `scripts`, `.devcontainer`, OpenSpec schema/config, CLAUDE.md, package.json, lockfile, tool configs). Code under `apps/` is denied while an OpenSpec change is active and the PR lacks `plan:approved`.
+  - `check-edit` (after an edit in `apps/*/src|test`): ESLint on the file plus its related test; fix what it reports.
+  - A denial is a rule, not an obstacle: do not look for another command that does the same thing. If it is wrong, say so and let a person decide. Hook tests: `node --test .claude/hooks/test/*.test.mjs` (also in CI).
 - Reproduce locally before pushing: `bash scripts/check-suppressions.sh`, `pnpm lint && pnpm typecheck`, `pnpm test:cov && node scripts/check-coverage.mjs`, `bash scripts/check-plan.sh`.
 
 ## Sessions and rules
