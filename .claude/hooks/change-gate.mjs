@@ -2,8 +2,9 @@
 // PreToolUse change-gate: risky commands and edits.
 //
 // Bash (every segment of the command is checked; the strictest decision wins):
-//   change-gate/git      deny  push to main/master, --force, --mirror; --no-verify; core.hooksPath;
-//                              worktree prune; history rewrite (filter-branch/filter-repo)
+//   change-gate/git      deny  push to main/master, --force, --mirror; worktree prune;
+//                              history rewrite (filter-branch/filter-repo)
+//                              (skipping the git hooks is githooks-guard's job)
 //                        ask   reset --hard, clean -f, restore/checkout -- (discard work), branch -D,
 //                              push --force-with-lease / --delete, worktree add/remove (use task:new/clean)
 //   change-gate/gh       deny  pr merge (a person merges); adding a person-only label; secrets; repo delete
@@ -43,31 +44,13 @@ const gitRule = (args, cwd) => {
   let i = 0;
   while (i < args.length && args[i].startsWith('-')) {
     const a = args[i];
-    if ((a === '-c' || a === '-C') && i + 1 < args.length) {
-      if (a === '-c' && /^core\.hookspath=/i.test(args[i + 1])) {
-        out.push(deny('change-gate/git', 'overriding core.hooksPath skips the git hooks'));
-      }
-      i += 2;
-    } else {
-      if (/^-c/.test(a) && /core\.hookspath/i.test(a)) out.push(deny('change-gate/git', 'overriding core.hooksPath'));
-      i++;
-    }
+    i += (a === '-c' || a === '-C') && i + 1 < args.length ? 2 : 1;
   }
   const sub = args[i];
   const rest = args.slice(i + 1);
   const has = (...flags) => rest.some((a) => flags.includes(a));
   if (!sub) return out;
 
-  // git accepts unambiguous prefixes: --no-verif, --no-v ...
-  if (rest.some((a) => /^--no-v(e(r(i(f(y)?)?)?)?)?$/.test(a))) {
-    out.push(deny('change-gate/git', '--no-verify skips the git hooks'));
-  }
-  if (sub === 'commit' && rest.some((a) => /^-[a-zA-Z]*n[a-zA-Z]*$/.test(a) && !a.startsWith('--'))) {
-    out.push(deny('change-gate/git', 'commit -n skips the git hooks'));
-  }
-  if (sub === 'config' && rest.some((a) => /^core\.hookspath$/i.test(a))) {
-    out.push(deny('change-gate/git', 'changing core.hooksPath skips the git hooks'));
-  }
   if (sub === 'push') {
     if (rest.some((a) => PROTECTED_BRANCHES.test(a))) out.push(deny('change-gate/git', 'pushing to main; open a PR'));
     // No refspec (or HEAD) pushes the current branch: deny when that is main/master.
