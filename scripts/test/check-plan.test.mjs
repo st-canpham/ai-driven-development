@@ -45,15 +45,11 @@ const check = (files, labels) => {
 
 const cases = [
   // [name, files, labels, expected exit, output pattern]
-  ['docs only + tier-0 + type:docs', ['README.md', 'docs/guide.md'], 'plan:tier-0,type:docs', 0, /documentation only/],
-  ['docs only + tier-0 only', ['README.md'], 'plan:tier-0', 1, /needs plan:tier-0 and type:docs/],
-  ['docs only + no label', ['docs/guide.md'], '', 1, /needs plan:tier-0 and type:docs/],
-  ['apps/web/CLAUDE.md is not docs', ['apps/web/CLAUDE.md'], 'plan:tier-0,type:docs', 1, /type:docs, but/],
-  ['.claude/ markdown is not docs', ['.claude/BACKLOG.md'], 'plan:tier-0', 0, /plan:tier-0/],
+  ['docs only + tier-0', ['README.md', 'docs/guide.md'], 'plan:tier-0', 0, /plan:tier-0/],
+  ['docs only, no label', ['docs/guide.md'], '', 1, /every change needs/],
   ['CLAUDE.md + tier-0', ['CLAUDE.md'], 'plan:tier-0', 0, /plan:tier-0/],
   ['control plane, no label', ['.github/workflows/ci.yml'], '', 1, /every change needs/],
   ['control plane + tier-0', ['.claude/hooks/x.mjs', '.devcontainer/devcontainer.json'], 'plan:tier-0', 0, /plan:tier-0/],
-  ['type:docs on a code change', ['README.md', 'scripts/x.sh'], 'plan:tier-0,type:docs', 1, /type:docs, but/],
   ['service + tier-0', ['apps/api/src/rooms/rooms.service.ts'], 'plan:tier-0', 0, /plan:tier-0/],
   ['service, no label', ['apps/api/src/rooms/rooms.service.ts'], '', 1, /every change needs/],
   ['tests only + tier-0', ['apps/api/src/rooms/rooms.service.spec.ts'], 'plan:tier-0', 0, /plan:tier-0/],

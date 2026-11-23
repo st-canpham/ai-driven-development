@@ -4,14 +4,11 @@
 #
 # Every PR that changes anything declares its plan with a label:
 #   - an OpenSpec change under openspec/changes/ -> plan:approved (and not plan:review)
-#   - otherwise -> plan:tier-0 (no behavior or interface change; the author adds
-#     it with a "Tier 0: <reason>" line, the reviewer removes it if they disagree)
-#   - documentation only -> plan:tier-0 and type:docs
+#   - otherwise (code, config, CI, hooks, docs ...) -> plan:tier-0 (no behavior or
+#     interface change; the author adds it with a "Tier 0: <reason>" line, the
+#     reviewer removes it if they disagree)
 # Interface files (controllers, DTOs, entities, migrations, web routes and
-# endpoints) always need the OpenSpec change. type:docs on a PR that changes
-# more than documentation fails.
-# Documentation = *.md outside openspec/ and .claude/, except CLAUDE.md files
-# (those steer the agent, so they are not "just docs").
+# endpoints) always need the OpenSpec change.
 #
 # PR labels come from `gh pr view`; CHECK_PLAN_LABELS="a,b" overrides them
 # (used by tests and CI).
@@ -27,14 +24,12 @@ if [ -z "$changed" ]; then
   exit 0
 fi
 
-docs=$(grep -E '\.md$' <<<"$changed" | grep -vE '^(openspec|\.claude)/|(^|/)CLAUDE\.md$' || true)
-non_docs=$(grep -vxF -f <(printf '%s\n' "$docs") <<<"$changed" || true)
 interface_files=$(grep -E '^apps/' <<<"$changed" \
   | grep -E '\.controller\.ts$|/dto/|\.entity\.ts$|/database/migrations/|\.routes\.ts$|/config/endpoint\.ts$' \
   | grep -vE '\.(spec|test|e2e-spec)\.tsx?$' || true)
 plan_files=$(grep -E '^openspec/changes/' <<<"$changed" || true)
 
-echo "Files changed: $(grep -c . <<<"$changed") ($(grep -c . <<<"$docs" || true) documentation)"
+echo "Files changed: $(grep -c . <<<"$changed")"
 [ -n "$interface_files" ] && echo "Interface files:" && sed 's/^/      /' <<<"$interface_files"
 
 if [ -n "${CHECK_PLAN_LABELS+x}" ]; then
@@ -46,12 +41,6 @@ else
   no_pr=1
 fi
 has() { grep -qx "$1" <<<"$labels"; }
-
-if has type:docs && [ -n "$non_docs" ]; then
-  echo "FAIL: type:docs, but the PR changes more than documentation:"
-  sed 's/^/      /' <<<"$non_docs"
-  exit 1
-fi
 
 if [ -n "$plan_files" ]; then
   echo "OpenSpec change:"
@@ -71,16 +60,6 @@ fi
 if [ -n "$interface_files" ]; then
   echo "FAIL: interface files changed without an OpenSpec change; plan:tier-0 is not allowed here."
   echo "      Create one with /opsx:propose."
-  exit 1
-fi
-
-if [ -z "$non_docs" ]; then
-  if has plan:tier-0 && has type:docs; then
-    echo "OK: documentation only (plan:tier-0 + type:docs)."
-    exit 0
-  fi
-  echo "FAIL: documentation-only PR needs plan:tier-0 and type:docs."
-  [ -n "${no_pr:-}" ] && echo "      No PR for this branch yet: open one and add both labels."
   exit 1
 fi
 
