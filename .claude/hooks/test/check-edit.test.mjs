@@ -1,10 +1,10 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
-import { mkdtempSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { checkFile, relatedTest } from '../check-edit.mjs';
-import { runRaw } from './harness.mjs';
+import { REPO, runRaw } from './harness.mjs';
 
 describe('check-edit: related test', () => {
   const files = new Set([
@@ -46,5 +46,50 @@ describe('check-edit: hook process', () => {
     const r = runRaw('check-edit.mjs', JSON.stringify({ tool_name: 'Edit', tool_input: { file_path: 'README.md' } }));
     assert.equal(r.status, 0);
     assert.equal(r.stderr, '');
+  });
+});
+
+describe('check-edit: formats with Prettier on real files', () => {
+  // Needs installed dependencies (pnpm install); CI installs before this step.
+  const ready = (app) => existsSync(join(REPO, `apps/${app}/node_modules`));
+  const edit = (rel) => runRaw('check-edit.mjs', JSON.stringify({ tool_name: 'Edit', tool_input: { file_path: join(REPO, rel) }, cwd: REPO }));
+  const withFile = (rel, content, fn) => {
+    const abs = join(REPO, rel);
+    writeFileSync(abs, content);
+    try {
+      fn(abs);
+    } finally {
+      rmSync(abs, { force: true });
+    }
+  };
+
+  for (const [app, rel] of [
+    ['api', 'apps/api/src/__check_edit_fmt__.ts'],
+    ['web', 'apps/web/src/app/__check_edit_fmt__.ts'],
+  ]) {
+    it(`${app}: badly formatted file is fixed and passes`, { skip: !ready(app) }, () => {
+      withFile(rel, 'export const   twice=(n:number)=>{return n*2}\n', (abs) => {
+        const r = edit(rel);
+        assert.equal(r.status, 0, r.stderr);
+        assert.equal(readFileSync(abs, 'utf8'), 'export const twice = (n: number) => {\n  return n * 2;\n};\n');
+      });
+    });
+  }
+  it('api: syntax error is reported, file left as is', { skip: !ready('api') }, () => {
+    const rel = 'apps/api/src/__check_edit_fmt__.ts';
+    withFile(rel, 'export const x = (;\n', (abs) => {
+      const r = edit(rel);
+      assert.equal(r.status, 2);
+      assert.match(r.stderr, /Prettier could not format/);
+      assert.equal(readFileSync(abs, 'utf8'), 'export const x = (;\n');
+    });
+  });
+  it('web: a lint problem that is not formatting still goes back to the agent', { skip: !ready('web') }, () => {
+    const rel = 'apps/web/src/app/__check_edit_fmt__.ts';
+    withFile(rel, 'export const f = (x: number) => {\n  if (x == 1) return 1;\n  return 2;\n};\n', () => {
+      const r = edit(rel);
+      assert.equal(r.status, 2);
+      assert.match(r.stderr, /eqeqeq/);
+    });
   });
 });

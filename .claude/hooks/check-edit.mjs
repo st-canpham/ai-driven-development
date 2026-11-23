@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // PostToolUse check-edit: fast feedback after the agent edits a TypeScript file in apps/.
-// Runs ESLint on the file and only its related test (foo.ts -> foo.spec.ts in
-// api, foo.test.ts(x) in web). Findings go back to Claude (exit 2) so it fixes
-// them. Not a gate: the CI `ci` check is. When dependencies are missing it
+// Formats the file with Prettier (formatting only), then runs ESLint on it and
+// only its related test (foo.ts -> foo.spec.ts in api, foo.test.ts(x) in web).
+// Findings go back to Claude (exit 2) so it fixes them. Not a gate: the CI
+// `ci` check is, and CI never auto-fixes. When dependencies are missing it
 // warns and lets the edit stand.
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -37,6 +38,11 @@ export const checkFile = (rel, root) => {
   }
   const inApp = rel.slice(`apps/${app}/`.length);
   const problems = [];
+
+  // Formatting only (no lint auto-fix): the agent never spends a turn on
+  // semicolons or line breaks, and reviewers never comment on them.
+  const format = run('pnpm', ['exec', 'prettier', '--write', '--log-level', 'warn', inApp], appDir);
+  if (!format.ok) problems.push(`Prettier could not format ${rel} (syntax error?):\n${format.out}`);
 
   const lint = run('pnpm', ['exec', 'eslint', '--max-warnings', '0', inApp], appDir);
   if (!lint.ok) problems.push(`ESLint (${rel}):\n${lint.out}`);
