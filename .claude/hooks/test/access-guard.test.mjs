@@ -65,6 +65,11 @@ describe('access-guard: bash', () => {
   it('unparseable command that names .env is denied', () => {
     assert.equal(bash(H, 'cat .env "unterminated').decision, 'deny');
   });
+  it('unparseable command without a secret name -> no decision, no crash', () => {
+    const r = bash(H, 'echo "unterminated');
+    assert.equal(r.decision, null);
+    assert.equal(r.status, 0, r.stderr);
+  });
 });
 
 describe('access-guard: fail closed', () => {
