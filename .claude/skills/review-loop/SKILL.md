@@ -64,15 +64,25 @@ Then the next pass reviews again, from step 1.
 
 ## 5. Clean pass
 
-When a pass returns `VERDICT: clean` and the suites are green:
+When a pass returns `VERDICT: clean` and the suites are green, commit and push
+everything first (the review must name a commit), then:
 
 ```bash
 node .claude/hooks/review-gate.mjs --mark
+gh pr comment <pr> --body "<!-- review: clean $(git rev-parse HEAD) -->
+Review: clean at pass <n>/3 — <count> fixed, <count> no change needed, <count> out of scope."
 ```
 
+The marker comment is what `plan-gate` checks before merge: the code under `apps/` at
+HEAD must equal the code at a commit with a clean-review marker. A later commit that
+only touches `openspec/` (the archive) keeps it valid; any later change under `apps/`
+(after `status:changes-requested`, for example) needs a new `/review-loop` and a new
+marker. Never post the marker without a clean pass.
+
 Then put the last disposition table under the PR's **Deviations from plan** (findings
-`no change needed` / `out of scope`, with their reason), mark the PR ready and swap
-`status:in-progress` for `status:code-review` (Plan-first step 6).
+`no change needed` / `out of scope`, with their reason), mark the PR ready (the
+`status-labels` workflow moves the label to `status:code-review`; set it yourself if
+the workflow has not run) (Plan-first step 6).
 
 ## Final report
 
