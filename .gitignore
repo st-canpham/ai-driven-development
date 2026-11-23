@@ -8,3 +8,6 @@ coverage/
 *.tsbuildinfo
 .worktrees/
 .pnpm-store/
+
+# review-gate state (per worktree)
+.claude/state/
