@@ -1,0 +1,62 @@
+# L5 free CI review (no LLM, no credential; free on public repositories).
+#   codeql             static security analysis of the TypeScript in apps/; alerts show
+#                      on the PR's changed lines and in the Security tab
+#   dependency-review  blocks a PR that adds a dependency with a known vulnerability
+#                      (moderate or worse) or a copyleft licence
+# Not required checks until the owner adds them to the ruleset on main.
+name: security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '23 3 * * 1' # weekly, for advisories published after the last change
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  codeql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: github/codeql-action/init@v4.39.1
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+          config: |
+            paths:
+              - apps
+            paths-ignore:
+              - '**/node_modules'
+              - '**/dist'
+              - '**/coverage'
+
+      - uses: github/codeql-action/analyze@v4.39.1
+        with:
+          category: /language:javascript-typescript
+
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/dependency-review-action@v5.0.0
+        with:
+          fail-on-severity: moderate
+          deny-licenses: AGPL-3.0-only, AGPL-3.0-or-later, GPL-3.0-only, GPL-3.0-or-later
+          comment-summary-in-pr: on-failure
