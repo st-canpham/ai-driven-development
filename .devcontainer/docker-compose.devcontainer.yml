@@ -11,6 +11,8 @@ services:
       VITE_HOST: 0.0.0.0
       # scripts/new-task.sh and clean-task.sh only run where this is set (L4).
       IN_DEVCONTAINER: "true"
+      # git config of the container lives next to the gh login, on the github-auth volume.
+      GIT_CONFIG_GLOBAL: /home/node/.config/gh/gitconfig
     # Published for every way of starting the container (VS Code or devcontainer CLI).
     # Main checkout: 3100 / 5173. Worktree slots 1-9 (scripts/new-task.sh):
     # API 3100+slot, web 5173+slot.
@@ -24,6 +26,9 @@ services:
       - node-modules:/workspaces/ai-driven-development/node_modules
       - api-node-modules:/workspaces/ai-driven-development/apps/api/node_modules
       - web-node-modules:/workspaces/ai-driven-development/apps/web/node_modules
+      # gh login (fine-grained PAT) + git config: container-only, survives rebuilds.
+      # Never a host mount. Removed only with `docker volume rm` (see github-auth.md).
+      - github-auth:/home/node/.config/gh
     depends_on:
       mysql:
         condition: service_healthy
@@ -31,3 +36,4 @@ volumes:
   node-modules:
   api-node-modules:
   web-node-modules:
+  github-auth:
