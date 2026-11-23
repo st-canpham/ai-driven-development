@@ -1,0 +1,60 @@
+# L5 merge gate: plan approval, archive, Tier 0 reason, status label, PR template.
+# Deterministic bash, no LLM. Required by the ruleset on main (check name: plan-gate).
+name: plan-gate
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled, ready_for_review]
+
+concurrency:
+  group: plan-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  plan-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # The gate's own scripts come from the base branch, so a PR cannot loosen
+      # the check that judges it. They are taken as one set: plan-gate.sh calls
+      # check-plan.sh, and mixing versions breaks. Bootstrap (no plan-gate.sh on
+      # the base yet): take the whole set from the PR once.
+      - name: Gate scripts from base
+        env:
+          BASE: origin/${{ github.event.pull_request.base.ref }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/gate"
+          if git cat-file -e "$BASE:scripts/plan-gate.sh" 2>/dev/null; then
+            src="$BASE"
+          else
+            src=HEAD
+            echo "::warning::scripts/plan-gate.sh is not on $BASE yet; using the PR's gate scripts (bootstrap)."
+          fi
+          for f in plan-gate.sh check-plan.sh; do
+            git show "$src:scripts/$f" > "$RUNNER_TEMP/gate/$f"
+            echo "scripts/$f from $src"
+          done
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install (for openspec)
+        run: pnpm install --frozen-lockfile
+
+      - name: Plan gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: bash "$RUNNER_TEMP/gate/plan-gate.sh" "origin/${{ github.event.pull_request.base.ref }}"

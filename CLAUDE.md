@@ -15,7 +15,7 @@ Domain: book meeting rooms. Users book rooms; admins manage rooms.
 - `pnpm task:new <change-id> [base]` / `pnpm task:clean <change-id> [--force]` — create / remove a task worktree (Dev Container only, see Isolation)
 - `pnpm dev:api` — API on :3100, all routes under `/api`
 - `pnpm dev:web` — web on :5173, proxies `/api` to the API
-- `pnpm build` / `pnpm lint` / `pnpm test`
+- `pnpm build` / `pnpm lint` / `pnpm typecheck` / `pnpm test` / `pnpm test:cov` — `lint` never auto-fixes (use `pnpm --filter api lint:fix` or `pnpm --filter web format`)
 - `pnpm --filter web format` — Prettier + ESLint --fix for the web app
 - `pnpm exec openspec list` / `validate <change>` — OpenSpec CLI (pinned 1.13.0)
 - `pnpm --filter api test:e2e` — e2e tests (needs MySQL up)
@@ -85,6 +85,14 @@ Keep exactly one `status:` label: remove the old one when you add the next. Neve
 - Worktrees store container paths: create and remove them **only inside the Dev Container** (the scripts refuse to run on the host). Worktrees you make on the host for yourself stay on the host.
 - **Never run `git worktree prune`**, on either side: each side sees the other's worktrees as missing and would delete their metadata (`gc.worktreePruneExpire=never` only protects `git gc`). Use `git worktree remove <path>` or `task:clean`.
 - Any state outside git (queues, Redis keys, uploads, caches) must be isolated per worktree (prefix with the schema name or slot) before it is added.
+
+## Enforcement (L5)
+- Merging to `main` needs two green checks, required by a ruleset with no bypass (admins included):
+  - **`ci`**: no new suppressions (`eslint-disable`, `@ts-ignore`/`@ts-expect-error`, `it.only`/`.skip`, coverage ignores), lint, typecheck, unit tests, **≥ 80% statement coverage on every changed source file**, migrations, e2e on a throwaway MySQL, build, gitleaks.
+  - **`plan-gate`**: `check-plan.sh`; no un-archived OpenSpec change; `openspec validate --specs`; `plan:tier-0` has a "Tier 0: <reason>" line; exactly one `status:` label and it is `status:done`; the PR body keeps the template's *Plan* and *Deviations from plan* headings.
+- `plan-gate` runs its scripts from the base branch, so a PR cannot loosen the gate that judges it.
+- Never make a check pass by silencing it: fix the code or the test. Lint/type/test config changes are flagged for the reviewer.
+- Reproduce locally before pushing: `bash scripts/check-suppressions.sh`, `pnpm lint && pnpm typecheck`, `pnpm test:cov && node scripts/check-coverage.mjs`, `bash scripts/check-plan.sh`.
 
 ## Sessions and rules
 - One task per session. `/clear` before starting an unrelated task; `/compact` when the context gets long; `/rewind` instead of patching a wrong direction.
