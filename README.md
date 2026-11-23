@@ -121,7 +121,8 @@ On the first run:
 2. **Approve the project MCP servers** from `.mcp.json`:
    - `mysql` — read-only (user `DB_RO_USER`, started by `scripts/mcp-mysql.sh` with credentials from `.env`)
    - `context7` — library docs
-3. Read [`CLAUDE.md`](CLAUDE.md). Feature work starts with `/opsx:propose "..."` (OpenSpec).
+3. Read [`CLAUDE.md`](CLAUDE.md). Feature work starts with `/opsx:propose "..."` (OpenSpec). After the plan is approved, `/opsx:apply` runs the agent workflow (test-writer → test review → code-writer → reviewer, with an advisor): [docs/agent-workflow.md](docs/agent-workflow.md).
+4. **Approve the project hooks** in `/hooks` when Claude Code asks (they change only through a reviewed PR).
 
 ## Working on a task (one worktree per task)
 

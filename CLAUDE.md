@@ -106,7 +106,7 @@ Keep exactly one `status:` label: remove the old one when you add the next. Neve
 - Reproduce locally before pushing: `bash scripts/check-suppressions.sh`, `pnpm lint && pnpm typecheck`, `pnpm test:cov && node scripts/check-coverage.mjs`, `bash scripts/check-plan.sh`.
 
 ## Agents (L5d)
-The session running `/opsx:apply` (in the task's worktree) is the **orchestrator**: it runs the gates and commits; it does not write tests or app code itself. Agents in `.claude/agents/`, loops in `.claude/skills/`:
+The session running `/opsx:apply` (in the task's worktree) is the **orchestrator**: it runs the gates and commits; it does not write tests or app code itself. Agents in `.claude/agents/`, loops in `.claude/skills/`; the full walkthrough (gates, test levels, dispositions, what to do when a gate fails) is [docs/agent-workflow.md](docs/agent-workflow.md):
 
 | Agent | Writes | Job |
 |---|---|---|
