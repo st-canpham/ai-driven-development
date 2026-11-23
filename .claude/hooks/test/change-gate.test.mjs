@@ -1,6 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { bash, fixtureRepo, run, runRaw, REPO } from './harness.mjs';
 
 const H = 'change-gate.mjs';
@@ -67,6 +68,10 @@ describe('change-gate: gh', () => {
     ['gh api -X DELETE repos/o/r/git/refs/heads/x', 'ask'],
     ['gh api repos/o/r/pulls/5', null],
     ['gh pr view 5 --json labels', null],
+    ['gh pr list --label status:done', null],
+    ['gh issue list -l plan:approved', null],
+    ['gh pr list --label=status:done', null],
+    ['gh issue create -l plan:approved --title x --body y', 'deny'],
   ];
   for (const [cmd, want] of cases) {
     it(`${cmd} -> ${want ?? 'no decision'}`, () => assert.equal(bash(H, cmd).decision, want));
@@ -90,6 +95,10 @@ describe('change-gate: deps, rm, shell, docker, db', () => {
     ['rm -rf ../other', 'deny'],
     ['ls | xargs -n 1 rm -rf /etc', 'deny'],
     ['rm -rf apps/web/coverage', null],
+    ['D=/; rm -rf $D', 'ask'],
+    ['rm -rf "$HOME"/x', 'ask'],
+    ['rm -rf $(pwd)/..', 'ask'],
+    ['rm -rf apps/*/coverage', 'ask'],
     ['rm -rf /tmp/x', null],
     ['rm --force file.txt', null],
     ['sudo apt-get install x', 'deny'],
@@ -141,6 +150,23 @@ describe('change-gate: edits', () => {
   it('archived changes only -> no decision', () => {
     assert.equal(edit('apps/api/src/x.ts', { HOOK_PR_LABELS: '' }, fixtureRepo([])).decision, null);
   });
+});
+
+describe('change-gate: push of the current branch', () => {
+  const repoOn = (branch) => {
+    const dir = fixtureRepo([]);
+    const g = (...a) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...a], { cwd: dir, stdio: 'ignore' });
+    g('init', '-q', '-b', branch);
+    g('commit', '-q', '--allow-empty', '-m', 'x');
+    return dir;
+  };
+  const push = (cmd, dir) => run(H, 'Bash', { command: cmd }, { CLAUDE_PROJECT_DIR: dir }, dir).decision;
+  it('git push on main -> deny', () => assert.equal(push('git push', repoOn('main')), 'deny'));
+  it('git push -u origin on main -> deny', () => assert.equal(push('git push -u origin', repoOn('main')), 'deny'));
+  it('git push origin HEAD on main -> deny', () => assert.equal(push('git push origin HEAD', repoOn('main')), 'deny'));
+  it('git push on master -> deny', () => assert.equal(push('git push', repoOn('master')), 'deny'));
+  it('git push on a feature branch -> no decision', () => assert.equal(push('git push', repoOn('feat/x')), null));
+  it('git push origin HEAD on a feature branch -> no decision', () => assert.equal(push('git push origin HEAD', repoOn('feat/x')), null));
 });
 
 describe('change-gate: fail closed', () => {

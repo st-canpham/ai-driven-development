@@ -75,7 +75,8 @@ export const decide = (payload) => {
       decisions.push(deny('access-guard/secrets', 'reading the macOS keychain'));
     }
     for (const w of words) {
-      for (const part of w.split(/[=:]/)) {
+      // Split on = : and redirections, so `cat<.env` and `x>.env` expose the file name.
+      for (const part of w.split(/[=:<>|&]+/)) {
         if (part && isSecretPath(part)) decisions.push(deny('access-guard/secrets', `${part} may hold credentials`));
       }
     }

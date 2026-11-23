@@ -17,7 +17,6 @@ Work agreed in earlier levels but deferred to a later one. Move an item to its P
 
 - L5b agent hooks: done (access-guard, change-gate, check-edit). Still open:
   - `.github/CODEOWNERS` for the control plane (`.github/`, `.claude/`, `scripts/`, `.devcontainer/`, `openspec/schemas/`, `openspec/config.yaml`). `plan-gate` reads CODEOWNERS from the base branch, never the PR head, and lists the control-plane paths a PR touches so the reviewer checks them closely. The hooks already ask before editing these paths.
-  - The plan check on edits needs `gh` to read PR labels. The Dev Container has no `gh` and no GitHub credentials, so there it asks instead of deciding; see the open question on GitHub access from the container.
 - L5c git hooks: `.githooks/pre-commit` via `core.hooksPath` (no Lefthook), < 30 s: gitleaks, Prettier and ESLint on staged files; fails if gitleaks is missing.
 - L5d read-only reviewer: `claude-code-action@v1`, inline comments only, skips drafts; secret `CLAUDE_CODE_OAUTH_TOKEN` (`claude setup-token`) or `ANTHROPIC_API_KEY`, added by the owner. Local `.claude/agents/reviewer.md` with structured findings and a 3-pass cap.
   - `plan-gate` also fails while the reviewer agent has inline comments on the PR's head SHA (zero bot comments = clean review). Count only comments on the latest commit.

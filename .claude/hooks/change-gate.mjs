@@ -29,7 +29,15 @@ export const PERSON_LABELS = ['plan:approved', 'status:changes-requested', 'stat
 
 const PROTECTED_BRANCHES = /^(\+?(HEAD:|refs\/heads\/)?(main|master))$|:(refs\/heads\/)?(main|master)$/;
 
-const gitRule = (args) => {
+const currentBranch = (cwd) => {
+  try {
+    return execFileSync('git', ['branch', '--show-current'], { cwd, encoding: 'utf8', timeout: 3000, stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  } catch {
+    return '';
+  }
+};
+
+const gitRule = (args, cwd) => {
   const out = [];
   // Global options before the subcommand: -C <dir>, -c <k=v>, --git-dir=...
   let i = 0;
@@ -62,6 +70,11 @@ const gitRule = (args) => {
   }
   if (sub === 'push') {
     if (rest.some((a) => PROTECTED_BRANCHES.test(a))) out.push(deny('change-gate/git', 'pushing to main; open a PR'));
+    // No refspec (or HEAD) pushes the current branch: deny when that is main/master.
+    const positional = rest.filter((a) => !a.startsWith('-'));
+    if ((positional.length <= 1 || positional.slice(1).some((a) => /^HEAD(:|$)/.test(a))) && /^(main|master)$/.test(currentBranch(cwd))) {
+      out.push(deny('change-gate/git', 'pushing the current branch, which is main; open a PR'));
+    }
     if (has('--force', '-f', '--mirror', '--all') || rest.some((a) => /^-[a-zA-Z]*f/.test(a) && !a.startsWith('--')) || rest.some((a) => a.startsWith('+'))) {
       out.push(deny('change-gate/git', 'force or mirror push rewrites remote history'));
     } else if (rest.some((a) => a.startsWith('--force-with-lease') || a.startsWith('--force-if-includes'))) {
@@ -96,9 +109,11 @@ const ghRule = (args) => {
   // (plan:approved goes back to plan:review when the plan changes).
   const added = args
     .flatMap((a, k) => {
-      if (a === '--add-label' || a === '--label' || a === '-l') return [args[k + 1] ?? ''];
+      // --label / -l add a label only when creating or editing; on list/view they filter.
+      const adding = a === '--add-label' || (['create', 'edit'].includes(verb) && (a === '--label' || a === '-l'));
+      if (adding) return [args[k + 1] ?? ''];
       const m = /^--(add-label|label)=(.*)$/.exec(a);
-      return m ? [m[2]] : [];
+      return m && (m[1] === 'add-label' || ['create', 'edit'].includes(verb)) ? [m[2]] : [];
     })
     .flatMap((v) => v.split(','));
   const viaApi = area === 'api' && /labels/.test(text) ? PERSON_LABELS.filter((l) => text.includes(l)) : [];
@@ -146,6 +161,8 @@ const rmRule = (args, cwd, root) => {
     if (['/', '~', '$HOME', '..', '.', '*', '/*', '~/*'].includes(t) || /(^|\/)\.git\/?$/.test(t)) {
       return [deny('change-gate/rm', `rm -r ${t}`)];
     }
+    // $VAR, $(...), backticks or globs: the real target is unknown until the shell expands it.
+    if (/[$`*?[{]/.test(t)) return [ask('change-gate/rm', `rm -r with an expanded target: ${t}`)];
     const abs = absPath(t.replace(/^~(?=\/|$)/, process.env.HOME ?? '~'), cwd);
     if (!isInside(abs, root) && !tempDirs().some((d) => isInside(abs, d))) {
       return [deny('change-gate/rm', `rm -r outside the repo: ${t}`)];
@@ -174,7 +191,7 @@ const bashDecisions = (cmd, cwd, root) => {
     const prog = basename(words[0]);
     const args = words.slice(1);
     if (prog === 'sudo' || prog === 'su' || prog === 'doas') out.push(deny('change-gate/shell', prog));
-    if (prog === 'git') out.push(...gitRule(args));
+    if (prog === 'git') out.push(...gitRule(args, cwd));
     if (prog === 'gh') out.push(...ghRule(args));
     if (prog === 'rm') out.push(...rmRule(args, cwd, root));
     if (prog === 'docker') out.push(...dockerRule(args));
