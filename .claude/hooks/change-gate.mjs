@@ -6,7 +6,9 @@
 //                              history rewrite (filter-branch/filter-repo); reflog expire/delete,
 //                              git prune, gc --prune=now (they remove the way back)
 //                              (skipping the git hooks is githooks-guard's job)
-//                        ask   reset --hard, clean -f, restore, checkout -- / . / -f / -B, switch -f / -C,
+//                        deny  reset --hard, restore, checkout -- / . / -f, switch -f while tracked files have
+//                              uncommitted changes (lost for good); ask when the tree is clean
+//                        ask   clean -f, reset --merge/--keep, checkout -B, switch -C,
 //                              stash drop/clear, branch -D / -f / -M, tag -d / -f, git rm -r / -f,
 //                              push --force-with-lease / --delete, worktree add/remove (use task:new/clean)
 //   change-gate/gh       deny  pr merge (a person merges); adding a person-only label; secrets; repo delete
@@ -45,12 +47,41 @@ const currentBranch = (cwd) => {
   }
 };
 
+// Tracked files with uncommitted changes (staged or not) under `paths` (all when
+// empty), relative to the repo root; null when git cannot tell.
+const dirtyTracked = (dir, paths = []) => {
+  try {
+    const out = execFileSync('git', ['status', '--porcelain', '--untracked-files=no', '--', ...paths], {
+      cwd: dir,
+      encoding: 'utf8',
+      timeout: 3000,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    return out.split('\n').filter(Boolean).map((l) => l.slice(3));
+  } catch {
+    return null;
+  }
+};
+
+// Commands that overwrite the working tree: deny while they would throw away
+// uncommitted changes (nothing brings those back), ask when the tree is clean
+// (only refs move, and the reflog brings commits back).
+const discard = (what, dir, paths = []) => {
+  const dirty = dirtyTracked(dir, paths);
+  if (dirty === null) return ask('change-gate/git', `${what} discards uncommitted changes (cannot read git status)`);
+  if (!dirty.length) return ask('change-gate/git', `${what}: no uncommitted changes would be lost, commits stay in the reflog`);
+  const list = dirty.slice(0, 5).join(', ') + (dirty.length > 5 ? ` (+${dirty.length - 5} more)` : '');
+  return deny('change-gate/git', `${what} would throw away uncommitted changes in ${list}; commit them or run git stash first`);
+};
+
 const gitRule = (args, cwd) => {
   const out = [];
   // Global options before the subcommand: -C <dir>, -c <k=v>, --git-dir=...
   let i = 0;
+  let dir = cwd;
   while (i < args.length && args[i].startsWith('-')) {
     const a = args[i];
+    if (a === '-C' && i + 1 < args.length) dir = absPath(args[i + 1], dir);
     i += (a === '-c' || a === '-C') && i + 1 < args.length ? 2 : 1;
   }
   const sub = args[i];
@@ -72,18 +103,26 @@ const gitRule = (args, cwd) => {
     }
     if (has('--delete', '-d') || rest.some((a) => /^:[^:]/.test(a))) out.push(ask('change-gate/git', 'deleting a remote branch'));
   }
-  if (sub === 'reset' && has('--hard', '--merge', '--keep')) out.push(ask('change-gate/git', 'reset --hard discards work'));
+  if (sub === 'reset' && has('--hard')) out.push(discard('reset --hard', dir));
+  // --merge / --keep refuse to overwrite local changes; they only move the branch.
+  else if (sub === 'reset' && has('--merge', '--keep')) out.push(ask('change-gate/git', `reset ${rest.find((a) => a.startsWith('--'))} moves the branch`));
   if (sub === 'clean' && rest.some((a) => /^-[a-zA-Z]*f/.test(a) || a === '--force')) out.push(ask('change-gate/git', 'clean -f deletes untracked files'));
-  if (sub === 'restore' && !has('--staged', '-S')) out.push(ask('change-gate/git', 'restore discards working-tree changes'));
+  // restore --staged alone only unstages; anything touching the worktree discards changes.
+  if (sub === 'restore' && (!has('--staged', '-S') || has('--worktree', '-W'))) {
+    const paths = rest.filter((a, k) => !a.startsWith('-') && !['-s', '--source'].includes(rest[k - 1]));
+    out.push(discard(`restore ${paths.join(' ')}`.trim(), dir, paths));
+  }
   if (sub === 'checkout') {
-    if (rest.includes('--')) out.push(ask('change-gate/git', 'checkout -- discards working-tree changes'));
+    const dd = rest.indexOf('--');
     // `git checkout .` / `./x` / `:/` are paths, not branches: they discard changes too.
-    else if (rest.some((a) => a === '.' || a === ':/' || a.startsWith('./'))) out.push(ask('change-gate/git', `checkout ${rest.join(' ')} discards working-tree changes`));
-    if (has('-f', '--force')) out.push(ask('change-gate/git', 'checkout -f discards working-tree changes'));
+    const paths = dd >= 0 ? rest.slice(dd + 1) : rest.filter((a) => a === '.' || a === ':/' || a.startsWith('./'));
+    if (paths.length) out.push(discard(`checkout ${dd >= 0 ? '-- ' : ''}${paths.join(' ')}`, dir, paths));
+    if (has('-f', '--force')) out.push(discard('checkout -f', dir));
     if (has('-B')) out.push(ask('change-gate/git', 'checkout -B resets an existing branch'));
   }
-  if (sub === 'switch' && has('-f', '--force', '--discard-changes', '-C', '--force-create')) {
-    out.push(ask('change-gate/git', `switch ${rest.find((a) => a.startsWith('-'))} discards changes or resets a branch`));
+  if (sub === 'switch') {
+    if (has('-f', '--force', '--discard-changes')) out.push(discard(`switch ${rest.find((a) => a.startsWith('-'))}`, dir));
+    if (has('-C', '--force-create')) out.push(ask('change-gate/git', 'switch -C resets an existing branch'));
   }
   if (sub === 'stash' && ['drop', 'clear'].includes(rest[0])) out.push(ask('change-gate/git', `stash ${rest[0]} deletes stashed work`));
   if (sub === 'branch' && (has('-D') || (has('--delete', '-d') && has('--force', '-f')))) {
