@@ -169,6 +169,85 @@ describe('change-gate: push of the current branch', () => {
   it('git push --force-with-lease on main -> deny', () => assert.equal(push('git push --force-with-lease', repoOn('main')), 'deny'));
 });
 
+describe('change-gate: destructive commands', () => {
+  const feature = repoOn('feat/x');
+  const cases = [
+    // rm -r: trailing slashes, the repo itself, inside the repo
+    ['rm -rf ./', 'deny'],
+    ['rm -rf ../', 'deny'],
+    ['rm -rf .git/', 'deny'],
+    ['rm -rf ./*', 'deny'],
+    [`rm -rf ${feature}`, 'deny'],
+    ['rm -rf apps', 'ask'],
+    ['rm -rf apps/api/src', 'ask'],
+    ['rm --recursive --force apps', 'ask'],
+    ['rm -rf node_modules', null],
+    ['rm -rf apps/web/dist apps/api/coverage', null],
+    ['rm -f apps/x.ts', null],
+    // git: discarding changes, stashes, branches, tags
+    ['git checkout .', 'ask'],
+    ['git checkout ./apps', 'ask'],
+    ['git checkout :/', 'ask'],
+    ['git checkout -f main', 'ask'],
+    ['git checkout -B main', 'ask'],
+    ['git checkout -b feat/y', null],
+    ['git checkout main', null],
+    ['git switch -f main', 'ask'],
+    ['git switch --discard-changes main', 'ask'],
+    ['git switch -C main', 'ask'],
+    ['git switch -c feat/y', null],
+    ['git stash drop', 'ask'],
+    ['git stash clear', 'ask'],
+    ['git stash pop', null],
+    ['git stash', null],
+    ['git branch -f main HEAD~3', 'ask'],
+    ['git branch -M feat/z', 'ask'],
+    ['git branch feat/y', null],
+    ['git tag -d v1', 'ask'],
+    ['git tag -f v1', 'ask'],
+    ['git tag v1', null],
+    ['git rm -r apps', 'ask'],
+    ['git rm -f apps/x.ts', 'ask'],
+    ['git rm apps/x.ts', null],
+    ['git rm --cached apps/x.ts', null],
+    // the way back to lost commits
+    ['git reflog expire --expire=now --all', 'deny'],
+    ['git reflog delete HEAD@{1}', 'deny'],
+    ['git gc --prune=now', 'deny'],
+    ['git prune', 'deny'],
+    ['git reflog', null],
+    ['git gc', null],
+    // bulk deletes and overwrites
+    ['find . -delete', 'ask'],
+    ["find . -name '*.ts' -exec rm {} +", 'ask'],
+    ['find . -name x -print', null],
+    ['truncate -s 0 apps/api/src/main.ts', 'ask'],
+    ['shred apps/x.ts', 'ask'],
+    ['dd if=/dev/zero of=x bs=1 count=1', 'ask'],
+    ['chmod -R 000 apps', 'ask'],
+    ['chown -R nobody apps', 'ask'],
+    ['chmod +x x.sh', null],
+    ['mv apps /tmp/', 'ask'],
+    ['mv apps ~/Desktop/', 'ask'],
+    ['mv a.ts b.ts', null],
+    // SQL
+    ["mysql -e 'DROP DATABASE x'", 'ask'],
+    ["mysql -e 'truncate table rooms'", 'ask'],
+    ['docker exec m mysql -e "delete from rooms"', 'ask'],
+    ['mysqladmin drop x', 'ask'],
+    ["mysql -e 'select 1'", null],
+    // gh deletes
+    ['gh release delete v1', 'ask'],
+    ['gh run delete 1', 'ask'],
+    ['gh cache delete --all', 'ask'],
+    ['gh repo delete o/r', 'deny'],
+    ['gh release list', null],
+  ];
+  for (const [cmd, want] of cases) {
+    it(`${cmd} -> ${want ?? 'no decision'}`, () => assert.equal(bashIn(feature, cmd), want));
+  }
+});
+
 describe('change-gate: fail closed', () => {
   it('malformed JSON is denied', () => assert.equal(runRaw(H, 'oops').decision, 'deny'));
   it('empty stdin is denied', () => assert.equal(runRaw(H, '').decision, 'deny'));
