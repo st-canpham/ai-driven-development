@@ -231,3 +231,22 @@ apply:
   instruction: |
     Read context files, work through pending tasks, mark complete as you go.
     Pause if you hit blockers or need clarification.
+
+    Start only when the PR has plan:approved and not plan:review; add status:in-progress.
+
+    Every task that changes code under apps/ goes through the /tdd-loop skill, one
+    `##` group of tasks.md at a time: the test-writer agent writes failing tests from
+    the group's scenarios (API e2e for HTTP behaviour, unit for service logic, Vitest
+    for web), you check the red gate, the reviewer agent reviews the tests (mode tests,
+    at most 3 passes), you commit the red tests, the code-writer agent makes them green,
+    you check the green gate (test files unchanged), commit and tick the tasks. You do
+    not write tests or app code yourself in this loop.
+
+    A spec or design question, or a DISPUTED test, goes to the /advise skill before
+    anyone picks a side. If the plan turns out wrong, stop: /opsx:update and swap
+    plan:approved back to plan:review.
+
+    After the last task, run the whole suite, then the /review-loop skill (reviewer,
+    mode change, at most 3 passes). Only a clean pass runs
+    `node .claude/hooks/review-gate.mjs --mark`; then mark the PR ready with the
+    Deviations from plan filled in and swap status:in-progress for status:code-review.

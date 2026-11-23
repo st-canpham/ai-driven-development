@@ -37,9 +37,9 @@ Domain: book meeting rooms. Users book rooms; admins manage rooms.
   1. `/opsx:explore` (read-only discussion), then `/opsx:propose` — writes only `openspec/changes/<id>/`. `design.md` is the plan: files, interfaces, Mermaid diagrams, how to verify.
   2. Commit it alone as `plan: <id>`, push, open a **draft** PR and add the label `plan:review`.
   3. Wait. A person reviews and swaps `plan:review` for `plan:approved`. Never add `plan:approved` yourself.
-  4. `/opsx:apply` only when the PR has `plan:approved` and not `plan:review`; add `status:in-progress`.
+  4. `/opsx:apply` only when the PR has `plan:approved` and not `plan:review`; add `status:in-progress`. Code under `apps/` goes through `/tdd-loop` (see Agents).
   5. If the plan turns out wrong: stop, `/opsx:update`, swap `plan:approved` back to `plan:review`, wait again. Code never runs ahead of the plan.
-  6. When done: mark the PR ready for review with "Deviations from plan" filled in; swap `status:in-progress` for `status:code-review`.
+  6. When done: `/review-loop` until a pass is clean, then mark the PR ready for review with "Deviations from plan" filled in; swap `status:in-progress` for `status:code-review`.
   7. A person reviews the code: `status:changes-requested` sends it back (you swap it for `status:in-progress`, fix, then `status:code-review` again); `status:done` approves it.
   8. On `status:done`, `/opsx:archive` **in the same PR** as its last commit (`archive: <id>`), then a person merges. Specs and code reach `main` together; never archive on `main` after the merge.
 - If a change meant as Tier 0 turns out to alter behavior or an interface, stop and switch to the OpenSpec flow.
@@ -99,9 +99,26 @@ Keep exactly one `status:` label: remove the old one when you add the next. Neve
   - `change-gate`: denies push to main, force push, `git worktree prune`, `gh pr merge`, adding a person-only label, `npx`, `sudo`, `rm -r` of /, ~, ., .git, the repo or paths outside it, `reflog expire` / `git prune` / `gc --prune=now`, migrations against a non-local DB; denies `reset --hard`, `restore`, `checkout .` / `--` / `-f` and `switch -f` while tracked files have uncommitted changes (commit or `git stash` first) and asks when the tree is clean; asks for `stash drop|clear`, moving or deleting branches and tags, `rm -r` inside the repo (except generated folders such as `node_modules`, `dist`, `coverage`), `find -delete`, `truncate` / `dd` / `chmod -R` / `mv` out of the repo, SQL `DROP` / `TRUNCATE` / `DELETE FROM`, `gh … delete`, adding packages, deleting Docker volumes and edits to the control plane (`.github`, `.claude`, `.githooks`, `scripts`, `.devcontainer`, OpenSpec schema/config, CLAUDE.md, package.json, lockfile, tool configs). Code under `apps/` is denied while an OpenSpec change is active and the PR lacks `plan:approved`.
   - `githooks-guard`: denies skipping or disabling the git hooks: `--no-verify` (and `commit -n`), `core.hooksPath` in any form (`-c`, `--config-env`, `git config`, `GIT_CONFIG_*` env), config edits that could drop it (`.git/config`, `[core]` section, `include.path`), `git commit-tree`, and deleting, moving, overwriting or un-executing `.githooks/*` / `.git/hooks/*`. Editing `.githooks/pre-commit` itself is a control-plane edit (change-gate asks).
   - `check-edit` (after an edit in `apps/*/src|test`): formats the file with Prettier, then ESLint on it plus its related test; fix what it reports. The file on disk may differ from what you wrote (formatting only): re-read it before the next edit.
+  - `role-guard` (in each agent's frontmatter): the `test-writer` writes only test files, the `code-writer` only app code under `apps/*/src`; the `reviewer` and `advisor` write nothing (reviewer Bash writes only to temp dirs). No agent commits, adds packages or runs a write-mode formatter.
+  - `review-gate` (Stop): a turn that leaves code under `apps/` changed against `origin/main` ends only after `/review-loop` recorded a clean review of exactly that state (`node .claude/hooks/review-gate.mjs --mark`, only after a clean pass). It blocks once per state. Never mark without a clean pass.
   - A denial is a rule, not an obstacle: do not look for another command that does the same thing. If it is wrong, say so and let a person decide. Hook tests: `node --test .claude/hooks/test/*.test.mjs` (also in CI).
 - **Git pre-commit hook** (`.githooks/pre-commit`, turned on by `pnpm install` through `core.hooksPath`): gitleaks on the staged changes, Prettier `--check` and ESLint on staged files of `apps/api` and `apps/web`. It blocks without gitleaks and never fixes files. When it blocks, fix the files, stage them again and commit again; never `--no-verify`, never change `core.hooksPath`.
 - Reproduce locally before pushing: `bash scripts/check-suppressions.sh`, `pnpm lint && pnpm typecheck`, `pnpm test:cov && node scripts/check-coverage.mjs`, `bash scripts/check-plan.sh`.
+
+## Agents (L5d)
+The session running `/opsx:apply` (in the task's worktree) is the **orchestrator**: it runs the gates and commits; it does not write tests or app code itself. Agents in `.claude/agents/`, loops in `.claude/skills/`:
+
+| Agent | Writes | Job |
+|---|---|---|
+| `test-writer` (sonnet) | test files | failing tests from the change's scenarios: API e2e for HTTP behaviour, unit for service logic, Vitest for web |
+| `code-writer` (sonnet) | app code | the narrowest change that turns the tests green; reports DISPUTED tests instead of editing them |
+| `reviewer` (opus) | nothing | mode `tests` after the red phase, mode `change` on the whole change; ranked findings and a verdict |
+| `advisor` (opus) | nothing | one blocking spec/design question → the governing source, quoted, and one next action |
+
+- `/tdd-loop`, per `##` group of `tasks.md`: test-writer → red gate (new tests fail for the right reason, only test files changed) → test review (at most 3 passes) → commit `test: … (red)` → code-writer → green gate (suites, lint, typecheck green; test files unchanged since the red commit) → commit `feat: …`, tick the tasks.
+- `/review-loop` on the whole change: at most 3 passes, every finding dispositioned (`fix now` / `no change needed` + proof / `out of scope`); pass 3 not clean → blocked, a person decides.
+- `/advise` before picking a side on a spec or design question or a DISPUTED test; "update plan" means `/opsx:update` and back to `plan:review`.
+- The agents run inside your Claude Code session (no extra billing; they use its quota). A CI reviewer needs an Anthropic credential and is deferred (`.claude/BACKLOG.md`).
 
 ## Sessions and rules
 - One task per session. `/clear` before starting an unrelated task; `/compact` when the context gets long; `/rewind` instead of patching a wrong direction.

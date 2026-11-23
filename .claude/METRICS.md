@@ -17,6 +17,7 @@ Gates: multi-file PRs with an approved plan attached = **100%**; PRs that needed
 | 2026-11-23 | #7 GitHub access from the Dev Container | Tier 0: Dev Container config and docs | 0 | n/a (Tier 0) | No |
 | 2026-11-23 | #6 L5b agent hooks | Tier 0: hooks, CI step, gate scripts | 0 | n/a (Tier 0) | No |
 | 2026-11-23 | #8 change-gate tests independent of the branch | Tier 0: hook tests and metrics log | 0 | n/a (Tier 0) | No |
+| 2026-11-23 | #9 L5c pre-commit hook, githooks-guard, destructive-command rules | Tier 0: git hook, agent hooks, Dev Container, CI pin, docs | 0 | n/a (Tier 0) | No |
 
 ## L4 · Isolation
 
