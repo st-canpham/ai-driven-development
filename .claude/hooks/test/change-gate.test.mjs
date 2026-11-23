@@ -6,6 +6,18 @@ import { bash, fixtureRepo, run, runRaw, REPO } from './harness.mjs';
 
 const H = 'change-gate.mjs';
 
+// Some git rules depend on the current branch (a bare `git push` on main is
+// denied), so git cases run in a throwaway repo on a known branch, never in
+// whatever branch this checkout happens to be on.
+const repoOn = (branch) => {
+  const dir = fixtureRepo([]);
+  const g = (...a) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...a], { cwd: dir, stdio: 'ignore' });
+  g('init', '-q', '-b', branch);
+  g('commit', '-q', '--allow-empty', '-m', 'x');
+  return dir;
+};
+const bashIn = (dir, cmd) => run(H, 'Bash', { command: cmd }, { CLAUDE_PROJECT_DIR: dir }, dir).decision;
+
 describe('change-gate: git', () => {
   const cases = [
     ['git push origin main', 'deny'],
@@ -44,8 +56,9 @@ describe('change-gate: git', () => {
     ['eval git reset --hard', 'ask'],
     ['echo "$(git push -f)"', 'deny'],
   ];
+  const feature = repoOn('feat/x');
   for (const [cmd, want] of cases) {
-    it(`${cmd} -> ${want ?? 'no decision'}`, () => assert.equal(bash(H, cmd).decision, want));
+    it(`${cmd} -> ${want ?? 'no decision'}`, () => assert.equal(bashIn(feature, cmd), want));
   }
 });
 
@@ -153,20 +166,14 @@ describe('change-gate: edits', () => {
 });
 
 describe('change-gate: push of the current branch', () => {
-  const repoOn = (branch) => {
-    const dir = fixtureRepo([]);
-    const g = (...a) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...a], { cwd: dir, stdio: 'ignore' });
-    g('init', '-q', '-b', branch);
-    g('commit', '-q', '--allow-empty', '-m', 'x');
-    return dir;
-  };
-  const push = (cmd, dir) => run(H, 'Bash', { command: cmd }, { CLAUDE_PROJECT_DIR: dir }, dir).decision;
+  const push = (cmd, dir) => bashIn(dir, cmd);
   it('git push on main -> deny', () => assert.equal(push('git push', repoOn('main')), 'deny'));
   it('git push -u origin on main -> deny', () => assert.equal(push('git push -u origin', repoOn('main')), 'deny'));
   it('git push origin HEAD on main -> deny', () => assert.equal(push('git push origin HEAD', repoOn('main')), 'deny'));
   it('git push on master -> deny', () => assert.equal(push('git push', repoOn('master')), 'deny'));
   it('git push on a feature branch -> no decision', () => assert.equal(push('git push', repoOn('feat/x')), null));
   it('git push origin HEAD on a feature branch -> no decision', () => assert.equal(push('git push origin HEAD', repoOn('feat/x')), null));
+  it('git push --force-with-lease on main -> deny', () => assert.equal(push('git push --force-with-lease', repoOn('main')), 'deny'));
 });
 
 describe('change-gate: fail closed', () => {
