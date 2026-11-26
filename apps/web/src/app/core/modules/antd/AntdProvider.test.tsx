@@ -47,6 +47,32 @@ describe('AntdProvider', () => {
     expect(screen.getByText('child content')).toBeInTheDocument();
   });
 
+  it('renders its children while translations are still loading', () => {
+    // A backend whose read never calls back keeps the namespace "loading".
+    const neverLoadingBackend = {
+      type: 'backend' as const,
+      init() {},
+      read() {},
+    };
+    const i18n = i18next.createInstance();
+    // Not awaited: init never resolves while the backend hangs.
+    void i18n
+      .use(neverLoadingBackend)
+      .use(initReactI18next)
+      .init({ lng: 'en', ns: ['common'], defaultNS: 'common' });
+
+    // No Suspense boundary: a suspending AntdProvider would render nothing.
+    render(
+      <I18nextProvider i18n={i18n}>
+        <AntdProvider>
+          <p>child content</p>
+        </AntdProvider>
+      </I18nextProvider>,
+    );
+
+    expect(screen.getByText('child content')).toBeInTheDocument();
+  });
+
   it('does not wrap children in a styled .ant-app element', async () => {
     const { view } = await renderWithLanguage('en', <p>child content</p>);
 
