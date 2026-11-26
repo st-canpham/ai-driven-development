@@ -110,32 +110,34 @@ Use `ComponentNameProps` for props interfaces.
 Destructure props in the function signature and set defaults inline:
 
 ```tsx
-interface ButtonProps {
-  variant?: 'primary' | 'secondary' | 'danger';
-  size?: 'small' | 'medium' | 'large';
-  disabled?: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
+import { Tag } from 'antd';
+
+interface RoomStatusTagProps {
+  status: 'available' | 'booked' | 'closed';
+  compact?: boolean;
 }
 
-export const Button = ({
-  variant = 'primary',
-  size = 'medium',
-  disabled = false,
-  onClick,
-  children,
-}: ButtonProps) => {
+const STATUS_COLOR = {
+  available: 'success',
+  booked: 'processing',
+  closed: 'default',
+} as const;
+
+export const RoomStatusTag = ({
+  status,
+  compact = false,
+}: RoomStatusTagProps) => {
+  const { t } = useTranslation('rooms');
+
   return (
-    <button
-      className={`btn btn--${variant} btn--${size}`}
-      disabled={disabled}
-      onClick={onClick}
-    >
-      {children}
-    </button>
+    <Tag color={STATUS_COLOR[status]} bordered={!compact}>
+      {t(`status.${status}`)}
+    </Tag>
   );
 };
 ```
+
+Controls (buttons, inputs, selects) come from antd; do not hand-build them. A shared component wraps antd only when it repeats a configuration, as above (see `antd-components.md`).
 
 Keep props small and explicit. If a component starts collecting many unrelated flags, split it into smaller components.
 

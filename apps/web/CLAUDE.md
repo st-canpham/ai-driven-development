@@ -55,13 +55,13 @@ Locale JSON lives under `src/assets/i18n/<lang>/<namespace>.json` (`en`/`ja`; na
 ## UI components (Ant Design)
 
 - Build UI with antd components; do not hand-build a control antd provides, and do not add another UI kit. New code does not use the legacy `shared/components/partials` `Button`/`Input`.
-- `core/modules/antd/AntdProvider.tsx` wraps the app (inside `I18nextProvider`, outside `AuthProvider`): `ConfigProvider` with `ANTD_THEME` (`antd-theme.ts`, mirrors `base/_variables.scss`; change both together) and the antd locale for the i18n language (`en_US` / `ja_JP`), plus antd's `<App>`.
+- `core/modules/antd/AntdProvider.tsx` wraps the app (inside `I18nextProvider`, outside `AuthProvider`): `ConfigProvider` with `ANTD_THEME` (`antd-theme.ts`, mirrors `base/_variables.scss`; change both together) and the antd locale for the i18n language (`en_US` / `ja_JP`), plus antd's `<App component={false}>` (no `.ant-app` wrapper div, so the base SCSS font size and colour still apply).
 - `message`, `notification` and `modal` come from `App.useApp()`, never the static `message.*` / `Modal.confirm` APIs (those render outside the theme and locale).
 - `@ant-design/icons` and a direct `dayjs` (for Japanese date pickers) are not installed yet; add them when a screen first needs them.
 
 ## Forms
 
-React Hook Form owns form state and validation (Zod schema through `zodResolver`); antd provides only layout and controls. Wrap each antd control in RHF's `Controller` inside a `Form.Item` **without** `name`, mapping `fieldState.error` to `validateStatus`/`help`; submit with `<Form onFinish={handleSubmit(onSubmit)}>`. Never use antd's `Form.useForm`, `Form.Item name` or `rules`. Example in the `frontend` skill (`references/antd-components.md`).
+React Hook Form owns form state and validation (Zod schema through `zodResolver`); antd provides only layout and controls. Wrap each antd control in RHF's `Controller` inside a `Form.Item` **without** `name`, mapping `fieldState.error` to `validateStatus`/`help` and linking the label with `htmlFor` on `Form.Item` plus the same `id` on the control (antd does not link them without `name`); submit with `<Form onFinish={handleSubmit(onSubmit)}>`. Never use antd's `Form.useForm`, `Form.Item name` or `rules`. Example in the `frontend` skill (`references/antd-components.md`).
 
 ## Styling
 

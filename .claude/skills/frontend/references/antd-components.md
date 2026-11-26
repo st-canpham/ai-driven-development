@@ -6,7 +6,7 @@ Use this reference when building UI: picking components, showing feedback (messa
 
 - `antd` v6 is the component library. `core/modules/antd/AntdProvider.tsx` wraps the app (inside `I18nextProvider`, outside `AuthProvider`) with:
   - `ConfigProvider` with `theme={ANTD_THEME}` (`core/modules/antd/antd-theme.ts`) and the antd `locale` for the current i18n language (`en` → `en_US`, `ja` → `ja_JP`; it follows `i18n.changeLanguage`).
-  - antd's `<App>` so `App.useApp()` returns `message`, `notification` and `modal` that read the theme and locale.
+  - antd's `<App component={false}>` so `App.useApp()` returns `message`, `notification` and `modal` that read the theme and locale. `component={false}` keeps antd from adding a `.ant-app` wrapper div, whose font size and colour would override the base SCSS on every screen.
 - Theme tokens mirror `src/stylesheet/base/_variables.scss`. Change a color in both places together, never only one.
 - `@ant-design/icons` is **not** installed yet. Add it (and say why in the PR) the first time a screen needs an icon.
 - antd date components use dayjs. Before adding a `DatePicker`/`TimePicker` shown in Japanese, add `dayjs` as a direct dependency and load `dayjs/locale/ja` alongside the antd locale.
@@ -49,11 +49,12 @@ React Hook Form owns form state and validation (Zod schema via `zodResolver`). a
 
 - `<Form layout="vertical" onFinish={handleSubmit(onSubmit)}>` for the layout; `onFinish` fires on submit via `htmlType="submit"`.
 - One `<Form.Item>` per field **without** `name`, with `label`, `validateStatus` and `help` taken from RHF's `fieldState`.
+- Without `name`, antd does not link the label to the control: pass `htmlFor` on `Form.Item` and the same `id` on the control (a `useId()` prefix keeps ids unique). Otherwise the label is not accessible and `getByLabelText` finds nothing.
 - The control goes inside `<Controller>`; spread `field` into it. antd controls are controlled components, so `register()` does not work with them.
 - Build the Zod schema inside the component (or a hook) when messages come from `t()`, as `Login.tsx` does.
 
 ```tsx
-import React from 'react';
+import React, { useId } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Form, Input, InputNumber } from 'antd';
 import { Controller, useForm } from 'react-hook-form';
@@ -62,6 +63,7 @@ import { z } from 'zod';
 
 const RoomForm = ({ onSubmit }: RoomFormProps) => {
   const { t } = useTranslation('rooms');
+  const formId = useId();
   const schema = z.object({
     name: z.string().min(1, t('form.name.required')),
     capacity: z.number({ message: t('form.capacity.required') }).int().positive(),
@@ -81,10 +83,11 @@ const RoomForm = ({ onSubmit }: RoomFormProps) => {
         render={({ field, fieldState }) => (
           <Form.Item
             label={t('form.name.label')}
+            htmlFor={`${formId}-name`}
             validateStatus={fieldState.error ? 'error' : undefined}
             help={fieldState.error?.message}
           >
-            <Input {...field} />
+            <Input id={`${formId}-name`} {...field} />
           </Form.Item>
         )}
       />
@@ -94,10 +97,11 @@ const RoomForm = ({ onSubmit }: RoomFormProps) => {
         render={({ field, fieldState }) => (
           <Form.Item
             label={t('form.capacity.label')}
+            htmlFor={`${formId}-capacity`}
             validateStatus={fieldState.error ? 'error' : undefined}
             help={fieldState.error?.message}
           >
-            <InputNumber {...field} min={1} />
+            <InputNumber id={`${formId}-capacity`} {...field} min={1} />
           </Form.Item>
         )}
       />
@@ -109,7 +113,7 @@ const RoomForm = ({ onSubmit }: RoomFormProps) => {
 };
 ```
 
-When a form repeats the `Controller` + `Form.Item` pair a lot, extract a small `shared/components/form/FormField.tsx` that takes `name`, `control`, `label` and a render function. Do not reintroduce antd's form store to save lines.
+When a form repeats the `Controller` + `Form.Item` pair a lot, extract a small `shared/components/form/FormField.tsx` that takes `name`, `control`, `label` and a render function, and wires `htmlFor`/`id` itself. Do not reintroduce antd's form store to save lines.
 
 ## Styling antd
 

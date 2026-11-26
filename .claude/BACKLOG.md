@@ -19,4 +19,6 @@ L5 is done except for one item that waits on the owner:
 
 ## Unscheduled
 
+- Web bundle: antd (via `AntdProvider` at the root) grew the main chunk from ~383 kB to ~666 kB (+97 kB gzip) and Vite warns about chunks > 500 kB. Split it (route-level chunks or `build.rollupOptions.output.manualChunks`) with the first screen that uses antd; never raise `chunkSizeWarningLimit` to hide it.
+
 - Dev Container: keep the Claude Code login across rebuilds with a container-only volume for `/home/node/.claude` (`CLAUDE_CONFIG_DIR`).
