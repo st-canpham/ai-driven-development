@@ -25,15 +25,19 @@ interface AntdProviderProps {
 
 // Theme + locale for every antd component, and antd's <App> so
 // App.useApp() gives context-aware message / notification / modal.
+// component={false}: no .ant-app wrapper div, whose font-size, line-height and
+// colour would override the base SCSS.
+// useSuspense: false: this sits above the app's Suspense/ErrorBoundary and
+// only needs i18n.language, not translations.
 export const AntdProvider = ({ children }: AntdProviderProps) => {
-  const { i18n } = useTranslation();
+  const { i18n } = useTranslation(undefined, { useSuspense: false });
 
   return (
     <ConfigProvider
       theme={ANTD_THEME}
       locale={getAntdLocale(i18n.resolvedLanguage ?? i18n.language)}
     >
-      <AntdApp>{children}</AntdApp>
+      <AntdApp component={false}>{children}</AntdApp>
     </ConfigProvider>
   );
 };
