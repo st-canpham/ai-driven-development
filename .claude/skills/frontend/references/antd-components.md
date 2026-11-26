@@ -8,7 +8,10 @@ Use this reference when building UI: picking components, showing feedback (messa
   - `ConfigProvider` with `theme={ANTD_THEME}` (`core/modules/antd/antd-theme.ts`) and the antd `locale` for the current i18n language (`en` → `en_US`, `ja` → `ja_JP`; it follows `i18n.changeLanguage`).
   - antd's `<App component={false}>` so `App.useApp()` returns `message`, `notification` and `modal` that read the theme and locale. `component={false}` keeps antd from adding a `.ant-app` wrapper div, whose font size and colour would override the base SCSS on every screen.
 - Theme tokens mirror `src/stylesheet/base/_variables.scss`. Change a color in both places together, never only one.
-- `@ant-design/icons` is **not** installed yet. Add it (and say why in the PR) the first time a screen needs an icon.
+- `@ant-design/icons` is installed at the version antd itself depends on (one copy in the lockfile). Keep the two in step when upgrading antd.
+  - Import each icon by name: `import { DeleteOutlined } from '@ant-design/icons';`. Never import the whole package or build icon names dynamically; both defeat tree-shaking.
+  - Pass icons through antd props where they exist (`<Button icon={<PlusOutlined />}>`). An icon-only button needs an accessible name: `aria-label={t('...')}`.
+  - Use the SVGs in `src/assets/icons` (via `vite-plugin-svgr`) only for icons antd does not have.
 - antd date components use dayjs. Before adding a `DatePicker`/`TimePicker` shown in Japanese, add `dayjs` as a direct dependency and load `dayjs/locale/ja` alongside the antd locale.
 
 ## Which component

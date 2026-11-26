@@ -57,7 +57,7 @@ Locale JSON lives under `src/assets/i18n/<lang>/<namespace>.json` (`en`/`ja`; na
 - Build UI with antd components; do not hand-build a control antd provides, and do not add another UI kit. New code does not use the legacy `shared/components/partials` `Button`/`Input`.
 - `core/modules/antd/AntdProvider.tsx` wraps the app (inside `I18nextProvider`, outside `AuthProvider`): `ConfigProvider` with `ANTD_THEME` (`antd-theme.ts`, mirrors `base/_variables.scss`; change both together) and the antd locale for the i18n language (`en_US` / `ja_JP`), plus antd's `<App component={false}>` (no `.ant-app` wrapper div, so the base SCSS font size and colour still apply).
 - `message`, `notification` and `modal` come from `App.useApp()`, never the static `message.*` / `Modal.confirm` APIs (those render outside the theme and locale).
-- `@ant-design/icons` and a direct `dayjs` (for Japanese date pickers) are not installed yet; add them when a screen first needs them.
+- Icons: `@ant-design/icons` (same version antd uses internally), imported one by one (`import { PlusOutlined } from '@ant-design/icons'`) so unused icons are tree-shaken; SVGs in `src/assets/icons` only for icons antd does not have. A direct `dayjs` (for Japanese date pickers) is not installed yet; add it when a screen first needs it.
 
 ## Forms
 
