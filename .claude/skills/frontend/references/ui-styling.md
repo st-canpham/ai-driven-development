@@ -2,6 +2,13 @@
 
 Use this reference when adding or changing SCSS, class names, reusable style modules, layout styles, or page styles.
 
+## Split between antd and SCSS
+
+- UI controls and data display come from antd (see `antd-components.md`). Their look is set by theme tokens in `core/modules/antd/antd-theme.ts`, not by SCSS.
+- SCSS is only for layout and pages: app shells, page structure, spacing between blocks, page-specific arrangement.
+- Do not style `.ant-*` classes from SCSS. If a token or prop cannot do it, say why in the PR.
+- Keep `base/_variables.scss` colors and `ANTD_THEME` tokens in step.
+
 ## Styling System
 
 The project uses global SCSS imported from the app entry:
@@ -10,7 +17,7 @@ The project uses global SCSS imported from the app entry:
 import '@stylesheet/styles.scss';
 ```
 
-Do not introduce CSS Modules, CSS-in-JS, or a new styling system unless the project has already adopted one or the task explicitly requires it.
+Do not introduce CSS Modules, CSS-in-JS, or a new styling system. antd's own CSS-in-JS is internal to antd and configured only through `ConfigProvider` theme tokens; do not write app styles with it.
 
 ## Stylesheet Structure
 
@@ -18,7 +25,7 @@ Do not introduce CSS Modules, CSS-in-JS, or a new styling system unless the proj
 src/stylesheet/
 ├── base/       # reset, variables, mixins, extends
 ├── layout/     # header, footer, grid, main
-├── modules/    # button, card, form, spinner, loader
+├── modules/    # legacy button, card, form, spinner, loader (new controls use antd)
 ├── pages/      # page-specific styles
 └── state/      # utility classes for text, spacing, state
 ```

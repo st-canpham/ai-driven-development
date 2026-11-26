@@ -11,6 +11,7 @@ import appRoutes from './app.routes';
 import AppSuspense from './AppSuspense';
 
 import { AuthProvider } from './shared/contexts/auth.context';
+import { AntdProvider } from './core/modules/antd/AntdProvider';
 import { renderChildren } from './core/modules/custom-router-dom/RouterOutlet';
 import AppErrorBoundaryFallback from './AppErrorBoundaryFallback';
 
@@ -33,8 +34,10 @@ const router = createBrowserRouter([
 const root = createRoot(document.getElementById('root'));
 root.render(
   <I18nextProvider i18n={i18n}>
-    <AuthProvider>
-      <RouterProvider router={router} />
-    </AuthProvider>
+    <AntdProvider>
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    </AntdProvider>
   </I18nextProvider>,
 );

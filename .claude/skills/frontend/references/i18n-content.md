@@ -90,6 +90,23 @@ const schema = z.object({
   username: z.string().nonempty(t('logIn.username.error.required')),
 });
 
-<Input label={t('logIn.username.label')} />
-<Button title={t('logIn.btn')} />
+<Controller
+  name="username"
+  control={control}
+  render={({ field, fieldState }) => (
+    <Form.Item
+      label={t('logIn.username.label')}
+      htmlFor={`${formId}-username`}
+      validateStatus={fieldState.error ? 'error' : undefined}
+      help={fieldState.error?.message}
+    >
+      <Input id={`${formId}-username`} {...field} />
+    </Form.Item>
+  )}
+/>
+<Button type="primary" htmlType="submit">
+  {t('logIn.btn')}
+</Button>
 ```
+
+An excerpt: `control` comes from `useForm` and `formId` from `useId()`; the full form pattern is in `antd-components.md`. The legacy `Input label` / `Button title` partials are for existing screens only.
