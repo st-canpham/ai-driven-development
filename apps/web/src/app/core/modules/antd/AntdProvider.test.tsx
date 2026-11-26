@@ -47,6 +47,12 @@ describe('AntdProvider', () => {
     expect(screen.getByText('child content')).toBeInTheDocument();
   });
 
+  it('does not wrap children in a styled .ant-app element', async () => {
+    const { view } = await renderWithLanguage('en', <p>child content</p>);
+
+    expect(view.container.querySelector('.ant-app')).toBeNull();
+  });
+
   it('uses the antd locale of the current i18n language', async () => {
     await renderWithLanguage('ja', <Empty />);
 
