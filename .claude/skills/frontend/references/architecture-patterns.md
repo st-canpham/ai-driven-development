@@ -37,7 +37,7 @@ core/
 ├── constants/   # app-wide constants and enums (e.g. ACCESS_TOKEN_KEY)
 ├── helpers/     # supporting logic for core services (auth token handling, jwt, storage, reducers)
 ├── hooks/       # React hooks not tied to one feature (e.g. useApi)
-├── modules/     # self-contained infra modules the app depends on (e.g. custom-router-dom)
+├── modules/     # self-contained infra modules the app depends on (custom-router-dom, antd provider + theme)
 └── services/    # infrastructure services: api.service.ts, auth.service.ts, auth-storage.service.ts, i18n.service.ts
 ```
 
@@ -47,7 +47,7 @@ Use `core/hooks/` for hooks that are not specific to one feature, such as a gene
 
 Use `core/helpers/` for supporting classes used by core services, such as token/JWT handling or storage access, when the logic is reusable infrastructure rather than a full service.
 
-Use `core/modules/` for infra the app depends on but that isn't a plain service, such as the custom router wiring (`custom-router-dom`: `PageRoute` type, `PrivateRoute` guard, `RouterOutlet` renderer — see `routing-layout.md`).
+Use `core/modules/` for infra the app depends on but that isn't a plain service, such as the custom router wiring (`custom-router-dom`: `PageRoute` type, `PrivateRoute` guard, `RouterOutlet` renderer — see `routing-layout.md`) and the antd setup (`antd`: `AntdProvider`, `ANTD_THEME` — see `antd-components.md`).
 
 Use `core/auth/` for the auth feature itself (login/register/auth shell). Auth lives under `core/` rather than `pages/` because it sits outside the authenticated app shell and is wired in at the top level (`app.routes.ts`), not under `pages/page.routes.ts`.
 
